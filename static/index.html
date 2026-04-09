@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemma 4 Vision Studio</title>
+  <style>
+    /* ── Design tokens ───────────────────────────────────────── */
+    :root {
+      --bg:           #06060f;
+      --surface:      rgba(255,255,255,0.04);
+      --surface-hi:   rgba(255,255,255,0.07);
+      --border:       rgba(255,255,255,0.08);
+      --border-glow:  rgba(124,58,237,0.45);
+      --primary:      #7c3aed;
+      --primary-dim:  rgba(124,58,237,0.15);
+      --primary-lit:  #a78bfa;
+      --cyan:         #06b6d4;
+      --pink:         #ec4899;
+      --green:        #10b981;
+      --amber:        #f59e0b;
+      --red:          #ef4444;
+      --txt:          #f1f5f9;
+      --txt-muted:    #94a3b8;
+      --txt-dim:      #475569;
+      --r:            16px;
+      --r-sm:         10px;
+      --shadow:       0 4px 32px rgba(0,0,0,0.5);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      color: var(--txt);
+      background: var(--bg);
+      min-height: 100vh;
+      scroll-behavior: smooth;
+    }
+
+    /* Ambient glow + grid */
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse 90% 60% at 50% -10%, rgba(124,58,237,0.18), transparent),
+        radial-gradient(ellipse 50% 40% at 85% 90%, rgba(6,182,212,0.10), transparent),
+        var(--bg);
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 56px 56px;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────── */
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 48px 20px 96px;
+    }
+
+    /* ── Header ──────────────────────────────────────────────── */
+    .hdr { text-align: center; padding-bottom: 52px; }
+
+    .hdr-chip {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--primary-dim);
+      border: 1px solid rgba(124,58,237,0.3);
+      border-radius: 100px; padding: 5px 16px;
+      font-size: 11px; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--primary-lit);
+      margin-bottom: 22px;
+    }
+    .hdr-chip::before {
+      content: '\25CF'; animation: blink 2.4s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    h1 {
+      font-size: clamp(2.1rem, 5.5vw, 3.4rem);
+      font-weight: 800; letter-spacing: -.035em; line-height: 1.1;
+      background: linear-gradient(135deg, #fff 0%, var(--primary-lit) 48%, var(--cyan) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 14px;
+    }
+
+    .hdr-sub {
+      color: var(--txt-muted); font-size: 1.05rem;
+      max-width: 520px; margin: 0 auto 18px; line-height: 1.6;
+    }
+
+    .hdr-pills {
+      display: flex; justify-content: center; align-items: center;
+      gap: 10px; flex-wrap: wrap;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 100px; padding: 4px 12px;
+      font-size: 12px; color: var(--txt-muted);
+      text-decoration: none; transition: all .2s;
+    }
+    .pill:hover { border-color: rgba(124,58,237,.35); color: var(--primary-lit); }
+    .pill-warn {
+      background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.3);
+      color: #fbbf24; display: none;
+    }
+    .pill-warn.on { display: inline-flex; }
+
+    /* ── Tabs ────────────────────────────────────────────────── */
+    .tabs-bar {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 4px; display: flex; gap: 3px; margin-bottom: 28px;
+    }
+    .tab-btn {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: 7px; padding: 11px 10px;
+      background: none; border: none; border-radius: 10px;
+      color: var(--txt-muted); font-size: 13.5px; font-weight: 500;
+      cursor: pointer; transition: all .2s; white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--txt); background: var(--surface-hi); }
+    .tab-btn.on {
+      background: linear-gradient(135deg, var(--primary), #4338ca);
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(124,58,237,.45);
+    }
+    .t-icon { font-size: 15px; }
+    .t-lbl { display: none; }
+    @media(min-width:460px){ .t-lbl { display: inline; } }
+
+    /* ── Tab panes ───────────────────────────────────────────── */
+    .pane { display: none; flex-direction: column; gap: 18px; }
+    .pane.on {
+      display: flex;
+      animation: fadeUp .25s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(10px); }
+      to   { opacity:1; transform:translateY(0);    }
+    }
+
+    /* ── Card ────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 24px 26px;
+      box-shadow: var(--shadow);
+    }
+
+    /* ── Upload zone ─────────────────────────────────────────── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--r); padding: 52px 20px;
+      text-align: center; cursor: pointer;
+      transition: all .2s; position: relative;
+    }
+    .drop-zone:hover {
+      border-color: rgba(124,58,237,.4);
+      background: rgba(124,58,237,.04);
+    }
+    .drop-zone.drag {
+      border-color: var(--primary);
+      background: rgba(124,58,237,.09);
+      box-shadow: 0 0 0 4px rgba(124,58,237,.12);
+    }
+    .drop-zone.has-img {
+      border-style: solid; padding: 18px;
+      border-color: rgba(16,185,129,.4);
+      background: rgba(16,185,129,.04);
+    }
+    .dz-icon { font-size: 44px; display: block; margin-bottom: 12px; }
+    .dz-title { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
+    .dz-sub { font-size: 13px; color: var(--txt-muted); }
+
+    .dz-placeholder { display: block; }
+    .dz-preview { display: none; flex-direction: column; align-items: center; gap: 10px; }
+    .has-img .dz-placeholder { display: none; }
+    .has-img .dz-preview { display: flex; }
+
+    .prev-img {
+      max-height: 190px; max-width: 100%; border-radius: 10px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.45); object-fit: contain;
+    }
+    .prev-name { font-size: 12px; color: var(--txt-muted); }
+    .prev-clear {
+      background: rgba(239,68,68,.13); border: 1px solid rgba(239,68,68,.3);
+      color: #fca5a5; padding: 4px 12px; border-radius: 7px;
+      font-size: 12px; cursor: pointer; transition: all .2s;
+    }
+    .prev-clear:hover { background: rgba(239,68,68,.24); }
+
+    input[type=file] { display: none; }
+
+    /* ── Form controls ───────────────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    label { font-size: 12.5px; font-weight: 500; color: var(--txt-muted); }
+    label small { color: var(--txt-dim); }
+
+    input[type=text] {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border); border-radius: var(--r-sm);
+      padding: 11px 15px; color: var(--txt); font-size: 14px;
+      font-family: inherit; width: 100%; transition: all .2s;
+    }
+    input[type=text]::placeholder { color: var(--txt-dim); }
+    input[type=text]:focus {
+      outline: none;
+      border-color: rgba(124,58,237,.5);
+      box-shadow: 0 0 0 3px rgba(124,58,237,.12);
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 7px; padding: 11px 22px; border: none; border-radius: var(--r-sm);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: all .2s; white-space: nowrap;
+    }
+    .btn-p {
+      background: linear-gradient(135deg, var(--primary), #4338ca);
+      color: #fff; box-shadow: 0 4px 18px rgba(124,58,237,.3);
+    }
+    .btn-p:hover { transform: translateY(-1px); box-shadow: 0 6px 26px rgba(124,58,237,.45); }
+    .btn-p:active { transform: none; }
+    .btn-p:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-s {
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--txt-muted);
+    }
+    .btn-s:hover { background: var(--surface-hi); color: var(--txt); }
+    .btn-xs { padding: 5px 12px; font-size: 12px; border-radius: 7px; }
+    .btn-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    /* ── Spinner ─────────────────────────────────────────────── */
+    .spin {
+      width: 17px; height: 17px;
+      border: 2px solid rgba(255,255,255,.25);
+      border-top-color: #fff; border-radius: 50%;
+      animation: rot .65s linear infinite; display:inline-block;
+    }
+    @keyframes rot { to { transform: rotate(360deg); } }
+
+    /* ── Result sections ─────────────────────────────────────── */
+    .result { display: none; }
+    .result.on { display: flex; flex-direction: column; gap: 16px; animation: fadeUp .3s ease; }
+
+    .rh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .rl { font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--txt-muted); }
+    .rt { line-height: 1.75; color: var(--txt); font-size: 15px; }
+    .result-img { width: 100%; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+
+    /* ── Detection list ──────────────────────────────────────── */
+    .det-list { display: flex; flex-direction: column; gap: 7px; }
+    .det-row {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-sm); padding: 11px 15px;
+    }
+    .det-lbl { font-weight: 600; font-size: 14px; text-transform: capitalize; flex: 1; }
+    .conf-wrap { flex: 2; display: flex; align-items: center; gap: 10px; }
+    .conf-bg { flex: 1; height: 6px; background: var(--border); border-radius: 100px; overflow: hidden; }
+    .conf-fg { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--primary), var(--cyan)); }
+    .conf-pct { font-size: 11.5px; color: var(--txt-muted); width: 36px; text-align: right; }
+
+    /* ── HTML split ──────────────────────────────────────────── */
+    .html-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media(max-width:680px){ .html-split { grid-template-columns: 1fr; } }
+
+    .html-frame {
+      width: 100%; height: 340px; border: 1px solid var(--border);
+      border-radius: 12px; background: #fff;
+    }
+    pre.html-code {
+      background: rgba(0,0,0,.5); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px; overflow: auto; max-height: 340px;
+      font-size: 12px; line-height: 1.6; color: #c9d1d9; margin: 0;
+    }
+    pre.html-code code { font-family: 'Fira Code','Cascadia Code','Consolas',monospace; white-space: pre; }
+
+    /* ── Pipeline elements grid ──────────────────────────────── */
+    .elem-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(196px,1fr)); gap: 10px; }
+    .elem-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px; transition: all .2s;
+    }
+    .elem-card:hover { border-color: rgba(124,58,237,.3); background: rgba(124,58,237,.05); }
+    .elem-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 6px;
+      font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+      margin-bottom: 8px;
+    }
+    .elem-desc { font-size: 13px; color: var(--txt-muted); line-height: 1.5; }
+    .elem-text { font-size: 11.5px; color: var(--txt-dim); margin-top: 6px; font-style: italic; }
+    .elem-conf { font-size: 11px; color: var(--txt-dim); margin-top: 8px; }
+
+    /* badge palette */
+    .b-button   { background:rgba(124,58,237,.18); color:#c4b5fd; border:1px solid rgba(124,58,237,.3); }
+    .b-text     { background:rgba(6,182,212,.13);  color:#67e8f9; border:1px solid rgba(6,182,212,.3);  }
+    .b-image    { background:rgba(236,72,153,.13); color:#f9a8d4; border:1px solid rgba(236,72,153,.3); }
+    .b-chart    { background:rgba(245,158,11,.13); color:#fcd34d; border:1px solid rgba(245,158,11,.3); }
+    .b-table    { background:rgba(16,185,129,.13); color:#6ee7b7; border:1px solid rgba(16,185,129,.3); }
+    .b-form,.b-input { background:rgba(239,68,68,.12); color:#fca5a5; border:1px solid rgba(239,68,68,.3); }
+    .b-navigation,.b-nav,.b-menu,.b-footer { background:rgba(99,102,241,.15); color:#c7d2fe; border:1px solid rgba(99,102,241,.3); }
+    .b-header   { background:rgba(251,191,36,.13); color:#fde68a; border:1px solid rgba(251,191,36,.3); }
+    .b-card     { background:rgba(6,182,212,.10);  color:#a5f3fc; border:1px solid rgba(6,182,212,.25); }
+    .b-icon     { background:rgba(236,72,153,.10); color:#fbcfe8; border:1px solid rgba(236,72,153,.25); }
+    .b-other,.b-default { background:rgba(255,255,255,.06); color:var(--txt-muted); border:1px solid var(--border); }
+
+    /* ── Categories / tags ───────────────────────────────────── */
+    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag {
+      background: var(--primary-dim); border: 1px solid rgba(124,58,237,.28);
+      color: var(--primary-lit); padding: 3px 12px; border-radius: 100px; font-size: 12px;
+    }
+
+    /* ── Q&A block ───────────────────────────────────────────── */
+    .qa-box {
+      background: rgba(124,58,237,.07); border: 1px solid rgba(124,58,237,.22);
+      border-radius: 12px; padding: 18px 20px;
+    }
+    .qa-q { font-size: 13px; color: var(--primary-lit); font-weight: 500; margin-bottom: 8px; }
+    .qa-a { color: var(--txt); line-height: 1.75; }
+
+    /* ── Error block ─────────────────────────────────────────── */
+    .err {
+      display: none; background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.24); border-radius: 12px;
+      padding: 14px 18px; color: #fca5a5; font-size: 14px;
+    }
+    .err.on { display: block; }
+
+    /* ── Toast ───────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      background: rgba(16,185,129,.14); border: 1px solid rgba(16,185,129,.3);
+      color: #6ee7b7; padding: 10px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; transform: translateY(16px);
+      transition: all .3s ease; pointer-events: none;
+    }
+    #toast.on { opacity: 1; transform: translateY(0); }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    .footer {
+      text-align: center; padding-top: 52px;
+      color: var(--txt-dim); font-size: 13px; line-height: 2;
+    }
+    .footer a { color: var(--primary-lit); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <header class="hdr">
+    <div class="hdr-chip">Powered by Gemma 4 &middot; Vision AI</div>
+    <h1>Gemma 4 Vision Studio</h1>
+    <p class="hdr-sub">
+      Four vision AI capabilities in one interface &mdash; analysis, object detection,
+      screenshot-to-code, and a structured element pipeline.
+    </p>
+    <div class="hdr-pills">
+      <span class="pill pill-warn" id="mockPill">&#9888; Mock Mode &mdash; no API key</span>
+      <a class="pill" href="/health" target="_blank">&#9889; Health</a>
+      <a class="pill" href="https://heyneo.com" target="_blank">&#129302; Built with NEO</a>
+      <a class="pill" href="https://marketplace.visualstudio.com/items?itemName=NeoResearchInc.heyneo" target="_blank">VS Code Extension</a>
+    </div>
+  </header>
+
+  <!-- Tab bar -->
+  <div class="tabs-bar" role="tablist">
+    <button class="tab-btn on" onclick="tab('analyze')" data-t="analyze">
+      <span class="t-icon">&#128269;</span><span class="t-lbl">Analyze</span>
+    </button>
+    <button class="tab-btn" onclick="tab('detect')" data-t="detect">
+      <span class="t-icon">&#128230;</span><span class="t-lbl">Detect</span>
+    </button>
+    <button class="tab-btn" onclick="tab('html')" data-t="html">
+      <span class="t-icon">&#128187;</span><span class="t-lbl">Screenshot &rarr; HTML</span>
+    </button>
+    <button class="tab-btn" onclick="tab('pipeline')" data-t="pipeline">
+      <span class="t-icon">&#9889;</span><span class="t-lbl">Pipeline</span>
+    </button>
+  </div>
+
+  <!-- ═══ Tab: Analyze ═══════════════════════════════════════════════════ -->
+  <div class="pane on" id="pane-analyze">
+    <div class="card">
+      <div id="dz-analyze" class="drop-zone"
+           onclick="document.getElementById('f-analyze').click()"
+           ondragover="dzOver(event,this)" ondragleave="dzLeave(this)"
+           ondrop="dzDrop(event,'f-analyze','dz-analyze','pi-analyze','pn-analyze')">
+        <span class="dz-placeholder">
+          <span class="dz-icon">&#128444;</span>
+          <div class="dz-title">Drop an image here, or click to browse</div>
+          <div class="dz-sub">JPG &middot; PNG &middot; GIF &middot; WebP &mdash; up to 10 MB</div>
+        </span>
+        <div class="dz-preview">
+          <img class="prev-img" id="pi-analyze" src="" alt="preview">
+          <span class="prev-name" id="pn-analyze"></span>
+          <button class="prev-clear" onclick="dzClear(event,'f-analyze','dz-analyze')">&#10005; Remove</button>
+        </div>
+      </div>
+      <input type="file" id="f-analyze" accept="image/*"
+             onchange="dzSelect(this,'dz-analyze','pi-analyze','pn-analyze')">
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label>Prompt <small>(optional)</small></label>
+        <input type="text" id="prompt-analyze"
+               value="Describe this image in detail"
+               placeholder="Ask anything about the image&hellip;">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-p" id="btn-analyze" onclick="runAnalyze()">
+        &#10024; Analyze Image
+      </button>
+    </div>
+
+    <div class="err" id="err-analyze"></div>
+
+    <div class="result" id="res-analyze">
+      <div class="card">
+        <div class="rh">
+          <span class="rl">Analysis Result</span>
+          <button class="btn btn-s btn-xs" onclick="cp('txt-analyze')">&#128203; Copy</button>
+        </div>
+        <div class="rt" id="txt-analyze"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Tab: Detect ════════════════════════════════════════════════════ -->
+  <div class="pane" id="pane-detect">
+    <div class="card">
+      <div id="dz-detect" class="drop-zone"
+           onclick="document.getElementById('f-detect').click()"
+           ondragover="dzOver(event,this)" ondragleave="dzLeave(this)"
+           ondrop="dzDrop(event,'f-detect','dz-detect','pi-detect','pn-detect')">
+        <span class="dz-placeholder">
+          <span class="dz-icon">&#127919;</span>
+          <div class="dz-title">Drop an image here, or click to browse</div>
+          <div class="dz-sub">Object detection via DETR + Gemma 4 fallback</div>
+        </span>
+        <div class="dz-preview">
+          <img class="prev-img" id="pi-detect" src="" alt="preview">
+          <span class="prev-name" id="pn-detect"></span>
+          <button class="prev-clear" onclick="dzClear(event,'f-detect','dz-detect')">&#10005; Remove</button>
+        </div>
+      </div>
+      <input type="file" id="f-detect" accept="image/*"
+             onchange="dzSelect(this,'dz-detect','pi-detect','pn-detect')">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-p" id="btn-detect" onclick="runDetect()">
+        &#127919; Detect Objects
+      </button>
+    </div>
+
+    <div class="err" id="err-detect"></div>
+
+    <div class="result" id="res-detect">
+      <div class="card">
+        <div class="rh"><span class="rl">Annotated Image</span></div>
+        <img class="result-img" id="det-img" src="" alt="annotated">
+      </div>
+      <div class="card">
+        <div class="rh">
+          <span class="rl">Detections</span>
+          <span id="det-count" style="font-size:13px;color:var(--txt-muted)"></span>
+        </div>
+        <div class="det-list" id="det-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Tab: Screenshot → HTML ════════════════════════════════════════ -->
+  <div class="pane" id="pane-html">
+    <div class="card">
+      <div id="dz-html" class="drop-zone"
+           onclick="document.getElementById('f-html').click()"
+           ondragover="dzOver(event,this)" ondragleave="dzLeave(this)"
+           ondrop="dzDrop(event,'f-html','dz-html','pi-html','pn-html')">
+        <span class="dz-placeholder">
+          <span class="dz-icon">&#128187;</span>
+          <div class="dz-title">Drop a UI screenshot here, or click to browse</div>
+          <div class="dz-sub">Generates clean semantic HTML + inline CSS via Gemma 4</div>
+        </span>
+        <div class="dz-preview">
+          <img class="prev-img" id="pi-html" src="" alt="preview">
+          <span class="prev-name" id="pn-html"></span>
+          <button class="prev-clear" onclick="dzClear(event,'f-html','dz-html')">&#10005; Remove</button>
+        </div>
+      </div>
+      <input type="file" id="f-html" accept="image/*"
+             onchange="dzSelect(this,'dz-html','pi-html','pn-html')">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-p" id="btn-html" onclick="runHtml()">
+        &#9881; Generate HTML
+      </button>
+    </div>
+
+    <div class="err" id="err-html"></div>
+
+    <div class="result" id="res-html">
+      <div class="card">
+        <div class="html-split">
+          <div>
+            <div class="rh">
+              <span class="rl">Live Preview</span>
+              <span id="html-valid" style="font-size:12px"></span>
+            </div>
+            <iframe id="html-frame" class="html-frame" sandbox="allow-same-origin"></iframe>
+          </div>
+          <div>
+            <div class="rh">
+              <span class="rl">HTML Source</span>
+              <button class="btn btn-s btn-xs" onclick="cp('html-code')">&#128203; Copy</button>
+            </div>
+            <pre class="html-code"><code id="html-code"></code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Tab: Pipeline ════════════════════════════════════════════════ -->
+  <div class="pane" id="pane-pipeline">
+    <div class="card">
+      <div id="dz-pipeline" class="drop-zone"
+           onclick="document.getElementById('f-pipeline').click()"
+           ondragover="dzOver(event,this)" ondragleave="dzLeave(this)"
+           ondrop="dzDrop(event,'f-pipeline','dz-pipeline','pi-pipeline','pn-pipeline')">
+        <span class="dz-placeholder">
+          <span class="dz-icon">&#9889;</span>
+          <div class="dz-title">Drop an image here, or click to browse</div>
+          <div class="dz-sub">Structured analysis: elements &middot; categories &middot; Q&amp;A</div>
+        </span>
+        <div class="dz-preview">
+          <img class="prev-img" id="pi-pipeline" src="" alt="preview">
+          <span class="prev-name" id="pn-pipeline"></span>
+          <button class="prev-clear" onclick="dzClear(event,'f-pipeline','dz-pipeline')">&#10005; Remove</button>
+        </div>
+      </div>
+      <input type="file" id="f-pipeline" accept="image/*"
+             onchange="dzSelect(this,'dz-pipeline','pi-pipeline','pn-pipeline')">
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label>Ask a question about the image <small>(optional)</small></label>
+        <input type="text" id="q-pipeline"
+               placeholder="What is the main purpose of this UI? What colour scheme is used?">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-p" id="btn-pipeline" onclick="runPipeline()">
+        &#9889; Run Pipeline
+      </button>
+    </div>
+
+    <div class="err" id="err-pipeline"></div>
+
+    <div class="result" id="res-pipeline">
+
+      <div class="card">
+        <div class="rh">
+          <span class="rl">Description</span>
+          <button class="btn btn-s btn-xs" onclick="cp('pipe-desc')">&#128203; Copy</button>
+        </div>
+        <div class="rt" id="pipe-desc"></div>
+      </div>
+
+      <div class="card" id="pipe-cat-card">
+        <div class="rh"><span class="rl">Categories</span></div>
+        <div class="tag-row" id="pipe-cats"></div>
+      </div>
+
+      <div class="card" id="pipe-elem-card">
+        <div class="rh">
+          <span class="rl">Detected Elements</span>
+          <span id="pipe-elem-count" style="font-size:13px;color:var(--txt-muted)"></span>
+        </div>
+        <div class="elem-grid" id="pipe-elems"></div>
+      </div>
+
+      <div class="card" id="pipe-text-card">
+        <div class="rh">
+          <span class="rl">Extracted Text</span>
+          <button class="btn btn-s btn-xs" onclick="cp('pipe-text')">&#128203; Copy</button>
+        </div>
+        <div class="rt" id="pipe-text" style="font-size:14px;color:var(--txt-muted)"></div>
+      </div>
+
+      <div id="pipe-qa-wrap" style="display:none">
+        <div class="qa-box">
+          <div class="qa-q" id="pipe-qa-q"></div>
+          <div class="qa-a" id="pipe-qa-a"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    Built autonomously by <a href="https://heyneo.com" target="_blank">NEO</a>
+    &mdash; your fully autonomous AI coding agent &nbsp;&middot;&nbsp;
+    <a href="https://marketplace.visualstudio.com/items?itemName=NeoResearchInc.heyneo" target="_blank">VS Code Extension</a>
+    <br>Powered by <strong>Gemma 4</strong> via Google Gemini API &middot; DETR object detection
+  </footer>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// Health check
+fetch('/health').then(r=>r.json()).then(d=>{
+  if(d.mock_mode) document.getElementById('mockPill').classList.add('on');
+}).catch(()=>{});
+
+// Tab switching
+function tab(name){
+  document.querySelectorAll('.pane').forEach(el=>el.classList.remove('on'));
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('on'));
+  document.getElementById('pane-'+name).classList.add('on');
+  document.querySelector('[data-t="'+name+'"]').classList.add('on');
+}
+
+// Drop-zone helpers
+function dzOver(e,el){ e.preventDefault(); el.classList.add('drag'); }
+function dzLeave(el){ el.classList.remove('drag'); }
+
+function dzDrop(e,fid,dzid,imgid,nameid){
+  e.preventDefault();
+  document.getElementById(dzid).classList.remove('drag');
+  var f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/')){
+    var inp=document.getElementById(fid);
+    var dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files;
+    showPrev(f,dzid,imgid,nameid);
+  }
+}
+
+function dzSelect(inp,dzid,imgid,nameid){
+  if(inp.files[0]) showPrev(inp.files[0],dzid,imgid,nameid);
+}
+
+function showPrev(file,dzid,imgid,nameid){
+  var r=new FileReader();
+  r.onload=function(e){
+    document.getElementById(imgid).src=e.target.result;
+    document.getElementById(nameid).textContent=file.name+' ('+fmtB(file.size)+')';
+    document.getElementById(dzid).classList.add('has-img');
+  };
+  r.readAsDataURL(file);
+}
+
+function dzClear(e,fid,dzid){
+  e.stopPropagation();
+  document.getElementById(fid).value='';
+  document.getElementById(dzid).classList.remove('has-img');
+}
+
+function fmtB(b){
+  if(b<1024) return b+' B';
+  if(b<1048576) return (b/1024).toFixed(1)+' KB';
+  return (b/1048576).toFixed(1)+' MB';
+}
+
+// Toast
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('on');
+  setTimeout(function(){ t.classList.remove('on'); },2600);
+}
+
+function cp(id){
+  navigator.clipboard.writeText(document.getElementById(id).textContent)
+    .then(function(){ toast('Copied to clipboard!'); });
+}
+
+// Button loading state
+function setBusy(id,busy){
+  var b=document.getElementById(id);
+  if(busy){ b._h=b.innerHTML; b.innerHTML='<span class="spin"></span> Processing\u2026'; b.disabled=true; }
+  else { b.innerHTML=b._h; b.disabled=false; }
+}
+
+function showErr(id,msg){ var el=document.getElementById(id); el.textContent='\u26A0 '+msg; el.classList.add('on'); }
+function clearErr(id){ document.getElementById(id).classList.remove('on'); }
+
+function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+var BADGE={
+  button:'b-button',text:'b-text',image:'b-image',chart:'b-chart',
+  table:'b-table',form:'b-form',input:'b-input',navigation:'b-navigation',
+  nav:'b-navigation',header:'b-header',footer:'b-footer',card:'b-card',
+  menu:'b-navigation',icon:'b-icon',other:'b-other'
+};
+function badge(t){ return BADGE[t]||'b-default'; }
+
+// ── Analyze ───────────────────────────────────────────────────────────────
+async function runAnalyze(){
+  var f=document.getElementById('f-analyze').files[0];
+  if(!f){ toast('Please upload an image first'); return; }
+  clearErr('err-analyze'); setBusy('btn-analyze',true);
+  var fd=new FormData(); fd.append('file',f);
+  var p=document.getElementById('prompt-analyze').value.trim();
+  if(p) fd.append('prompt',p);
+  try{
+    var r=await fetch('/analyze',{method:'POST',body:fd});
+    var d=await r.json();
+    if(!r.ok) throw new Error(d.detail||'Request failed');
+    if(!d.success) throw new Error(d.error||'Analysis failed');
+    document.getElementById('txt-analyze').textContent=d.text;
+    document.getElementById('res-analyze').classList.add('on');
+  }catch(e){ showErr('err-analyze',e.message); }
+  finally{ setBusy('btn-analyze',false); }
+}
+
+// ── Detect ────────────────────────────────────────────────────────────────
+async function runDetect(){
+  var f=document.getElementById('f-detect').files[0];
+  if(!f){ toast('Please upload an image first'); return; }
+  clearErr('err-detect'); setBusy('btn-detect',true);
+  var fd=new FormData(); fd.append('file',f);
+  try{
+    var r=await fetch('/segment',{method:'POST',body:fd});
+    var d=await r.json();
+    if(!r.ok) throw new Error(d.detail||'Request failed');
+    if(!d.success) throw new Error(d.error||'Detection failed');
+    document.getElementById('det-img').src='data:image/png;base64,'+d.image_base64;
+    var dets=d.detections||[];
+    document.getElementById('det-count').textContent=dets.length+' object'+(dets.length!==1?'s':'');
+    var list=document.getElementById('det-list');
+    list.innerHTML=dets.map(function(x){
+      var pct=Math.round((x.confidence||0)*100);
+      return '<div class="det-row"><span class="det-lbl">'+escH(x.label||'object')+'</span>'
+        +'<div class="conf-wrap"><div class="conf-bg"><div class="conf-fg" style="width:'+pct+'%"></div></div>'
+        +'<span class="conf-pct">'+pct+'%</span></div></div>';
+    }).join('');
+    document.getElementById('res-detect').classList.add('on');
+  }catch(e){ showErr('err-detect',e.message); }
+  finally{ setBusy('btn-detect',false); }
+}
+
+// ── HTML ──────────────────────────────────────────────────────────────────
+async function runHtml(){
+  var f=document.getElementById('f-html').files[0];
+  if(!f){ toast('Please upload a screenshot first'); return; }
+  clearErr('err-html'); setBusy('btn-html',true);
+  var fd=new FormData(); fd.append('file',f);
+  try{
+    var r=await fetch('/screenshot-to-html',{method:'POST',body:fd});
+    var d=await r.json();
+    if(!r.ok) throw new Error(d.detail||'Request failed');
+    if(!d.success) throw new Error(d.error||'Conversion failed');
+    var code=d.html_code||'';
+    document.getElementById('html-code').textContent=code;
+    document.getElementById('html-frame').srcdoc=code;
+    document.getElementById('html-valid').innerHTML=d.is_valid
+      ?'<span style="color:#6ee7b7">\u2713 Valid HTML</span>'
+      :'<span style="color:#fca5a5">\u26A0 Invalid HTML</span>';
+    document.getElementById('res-html').classList.add('on');
+  }catch(e){ showErr('err-html',e.message); }
+  finally{ setBusy('btn-html',false); }
+}
+
+// ── Pipeline ──────────────────────────────────────────────────────────────
+async function runPipeline(){
+  var f=document.getElementById('f-pipeline').files[0];
+  if(!f){ toast('Please upload an image first'); return; }
+  clearErr('err-pipeline'); setBusy('btn-pipeline',true);
+  var fd=new FormData(); fd.append('file',f);
+  var q=document.getElementById('q-pipeline').value.trim();
+  if(q) fd.append('question',q);
+  try{
+    var r=await fetch('/pipeline',{method:'POST',body:fd});
+    var d=await r.json();
+    if(!r.ok) throw new Error(d.detail||'Request failed');
+    if(!d.success) throw new Error(d.error||'Pipeline failed');
+
+    document.getElementById('pipe-desc').textContent=d.description||'';
+
+    var cats=d.categories||[];
+    document.getElementById('pipe-cats').innerHTML=cats.map(function(c){ return '<span class="tag">'+escH(c)+'</span>'; }).join('');
+    document.getElementById('pipe-cat-card').style.display=cats.length?'':'none';
+
+    var elems=d.detected_elements||[];
+    document.getElementById('pipe-elem-count').textContent=elems.length+' element'+(elems.length!==1?'s':'');
+    document.getElementById('pipe-elems').innerHTML=elems.map(function(el){
+      var t=(el.element_type||'other').toLowerCase();
+      var pct=Math.round((el.confidence||0.8)*100);
+      return '<div class="elem-card">'
+        +'<span class="elem-badge '+badge(t)+'">'+escH(t)+'</span>'
+        +'<div class="elem-desc">'+escH(el.description||'')+'</div>'
+        +(el.text_content?'<div class="elem-text">\u201c'+escH(el.text_content)+'\u201d</div>':'')
+        +'<div class="elem-conf">'+pct+'% confidence</div>'
+        +'</div>';
+    }).join('');
+    document.getElementById('pipe-elem-card').style.display=elems.length?'':'none';
+
+    var txt=d.text_content||'';
+    document.getElementById('pipe-text').textContent=txt||'No text extracted.';
+    document.getElementById('pipe-text-card').style.display=txt?'':'none';
+
+    var qaWrap=document.getElementById('pipe-qa-wrap');
+    if(d.answer&&d.question){
+      document.getElementById('pipe-qa-q').textContent='\u2753 '+d.question;
+      document.getElementById('pipe-qa-a').textContent=d.answer;
+      qaWrap.style.display='';
+    } else { qaWrap.style.display='none'; }
+
+    document.getElementById('res-pipeline').classList.add('on');
+  }catch(e){ showErr('err-pipeline',e.message); }
+  finally{ setBusy('btn-pipeline',false); }
+}
+</script>
+</body>
+</html>

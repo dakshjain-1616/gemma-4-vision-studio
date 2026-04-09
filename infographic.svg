@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06000f"/>
+      <stop offset="100%" stop-color="#0f0020"/>
+    </linearGradient>
+    <linearGradient id="pink" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ec4899"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a0028" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0a0018" stop-opacity="0.9"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#ec489920"/>
+    </filter>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#ec4899"/>
+    </marker>
+    <marker id="arrow2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="860" height="420" fill="url(#bg)"/>
+
+  <!-- Grid -->
+  <g opacity="0.04" stroke="#ec4899" stroke-width="0.5">
+    <line x1="0" y1="70" x2="860" y2="70"/>
+    <line x1="0" y1="140" x2="860" y2="140"/>
+    <line x1="0" y1="210" x2="860" y2="210"/>
+    <line x1="0" y1="280" x2="860" y2="280"/>
+    <line x1="0" y1="350" x2="860" y2="350"/>
+    <line x1="215" y1="0" x2="215" y2="420"/>
+    <line x1="430" y1="0" x2="430" y2="420"/>
+    <line x1="645" y1="0" x2="645" y2="420"/>
+  </g>
+
+  <!-- Top bar -->
+  <rect x="0" y="0" width="860" height="3" fill="url(#pink)"/>
+
+  <!-- Title -->
+  <text x="430" y="36" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">Gemma 4 Vision Studio</text>
+  <text x="430" y="56" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="12" fill="#ec489980">4-mode vision AI: analyze · detect · screenshot→HTML · pipeline</text>
+
+  <!-- Center: Gemma 4 Core -->
+  <rect x="340" y="100" width="180" height="120" rx="14" fill="#1a002880" stroke="#ec4899" stroke-width="2" filter="url(#shadow)"/>
+  <text x="430" y="130" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="26" fill="#ec4899">✨</text>
+  <text x="430" y="152" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#ffffff">Gemma 4 Core</text>
+  <text x="430" y="168" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#ec489999">gemma-4-31b-it</text>
+  <text x="430" y="184" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">Gemini API · Mock Mode</text>
+  <text x="430" y="198" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">Base64 image encoding</text>
+
+  <!-- Mode 1: Analyze (top-left) -->
+  <rect x="30" y="80" width="150" height="100" rx="10" fill="url(#card)" stroke="#ec4899" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="105" y="104" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="20" fill="#ec4899">🔍</text>
+  <text x="105" y="122" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="700" fill="#ffffff">Analyze</text>
+  <text x="105" y="138" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">Custom prompts</text>
+  <text x="105" y="152" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">Free-form description</text>
+  <text x="105" y="166" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">POST /analyze</text>
+  <line x1="181" y1="130" x2="338" y2="148" stroke="#ec4899" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4,3"/>
+
+  <!-- Mode 2: Detect (bottom-left) -->
+  <rect x="30" y="220" width="150" height="100" rx="10" fill="url(#card)" stroke="#f472b6" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="105" y="244" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="20" fill="#f472b6">📦</text>
+  <text x="105" y="262" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="700" fill="#ffffff">Detect</text>
+  <text x="105" y="278" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">Object detection</text>
+  <text x="105" y="292" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">Bounding boxes + conf</text>
+  <text x="105" y="306" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">POST /segment</text>
+  <line x1="181" y1="270" x2="338" y2="185" stroke="#f472b6" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4,3"/>
+
+  <!-- Mode 3: Screenshot→HTML (top-right) -->
+  <rect x="680" y="80" width="150" height="100" rx="10" fill="url(#card)" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="755" y="104" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="20" fill="#7c3aed">💻</text>
+  <text x="755" y="122" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="700" fill="#ffffff">Screenshot→HTML</text>
+  <text x="755" y="138" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">UI reconstruction</text>
+  <text x="755" y="152" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">HTML validation + preview</text>
+  <text x="755" y="166" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">POST /screenshot-to-html</text>
+  <line x1="679" y1="130" x2="522" y2="148" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arrow2)" stroke-dasharray="4,3"/>
+
+  <!-- Mode 4: Pipeline (bottom-right) -->
+  <rect x="680" y="220" width="150" height="100" rx="10" fill="url(#card)" stroke="#8b5cf6" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="755" y="244" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="20" fill="#8b5cf6">⚡</text>
+  <text x="755" y="262" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="700" fill="#ffffff">Pipeline</text>
+  <text x="755" y="278" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">Structured JSON output</text>
+  <text x="755" y="292" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">Elements + categories + Q&amp;A</text>
+  <text x="755" y="306" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff80">POST /pipeline</text>
+  <line x1="679" y1="270" x2="522" y2="185" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arrow2)" stroke-dasharray="4,3"/>
+
+  <!-- Bottom stats row -->
+  <g transform="translate(20, 340)">
+    <rect width="190" height="64" rx="8" fill="#1a002880" stroke="#ec489920" stroke-width="1"/>
+    <text x="95" y="22" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="700" fill="#ec4899">FastAPI Backend</text>
+    <text x="95" y="42" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">5 endpoints</text>
+    <text x="95" y="58" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff60">REST API + static UI</text>
+  </g>
+  <g transform="translate(222, 340)">
+    <rect width="190" height="64" rx="8" fill="#1a002880" stroke="#ec489920" stroke-width="1"/>
+    <text x="95" y="22" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="700" fill="#f472b6">Glassmorphism UI</text>
+    <text x="95" y="42" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">4 tabs</text>
+    <text x="95" y="58" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff60">drag-drop · dark theme</text>
+  </g>
+  <g transform="translate(424, 340)">
+    <rect width="190" height="64" rx="8" fill="#1a002880" stroke="#ec489920" stroke-width="1"/>
+    <text x="95" y="22" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="700" fill="#7c3aed">Formats</text>
+    <text x="95" y="42" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">PNG·JPG·WEBP</text>
+    <text x="95" y="58" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff60">up to 10MB per image</text>
+  </g>
+  <g transform="translate(626, 340)">
+    <rect width="214" height="64" rx="8" fill="#1a002880" stroke="#ec489920" stroke-width="1"/>
+    <text x="107" y="22" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="700" fill="#8b5cf6">Test Coverage</text>
+    <text x="107" y="42" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">19 tests</text>
+    <text x="107" y="58" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#ffffff60">pytest · all passing</text>
+  </g>
+</svg>
