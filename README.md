@@ -2,15 +2,7 @@
 
 > Built autonomously by [NEO](https://heyneo.com) — your fully autonomous AI coding agent. &nbsp; [![NEO for VS Code](https://img.shields.io/badge/VS%20Code-NEO%20Extension-5C2D91?logo=visual-studio-code&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=NeoResearchInc.heyneo)
 
-![Architecture](./infographic.svg)
-
-A live web application that combines three powerful vision AI capabilities in one place — image analysis, object detection/segmentation, and screenshot-to-HTML conversion — all powered by Gemma 4 via Google Gemini API.
-
----
-
-## Why This Exists
-
-Vision AI is powerful but fragmented. You need one tool for image description, another for object detection, and a separate service to turn screenshots into code. This studio combines all three behind a single clean web UI, with a mock mode so you can build and demo without an API key.
+A web application that combines four vision AI capabilities in one interface — image analysis, object detection, screenshot-to-HTML conversion, and a structured element pipeline — all powered by Gemma 4.
 
 ---
 
@@ -19,48 +11,90 @@ Vision AI is powerful but fragmented. You need one tool for image description, a
 ```
 Upload Image  ──►  Choose Mode  ──►  Get Results
                         │
-         ┌──────────────┼──────────────┐
-         ▼              ▼              ▼
-   Analyze Image    Segment It    Screenshot → HTML
-   (Gemma 4)        (DETR model)  (Gemma 4 vision)
-   
-   "What's in       Bounding boxes  Ready-to-use
-   this image?"     + labels on     HTML/CSS code
-                    the image
+         ┌──────────────┼──────────────┬──────────────┐
+         ▼              ▼              ▼              ▼
+   Analyze Image    Detect Objects  Screenshot      Pipeline
+   (Gemma 4)        (DETR model)    → HTML          (structured
+                                    (Gemma 4)        JSON output)
 ```
 
----
+### Four Modes
 
-## Three Modes
-
-### Image Analysis
-Upload any image and ask a natural language question. Powered by Gemma 4 vision — describe scenes, read text, identify objects, explain charts.
-
-### Image Segmentation
-Detects objects in the image using Facebook's DETR model (running locally). Returns labeled bounding boxes drawn directly on the image, plus a structured list of detected objects with confidence scores.
-
-### Screenshot to HTML
-Upload a screenshot of any UI — a website, app, dashboard — and get back clean, semantic HTML/CSS that recreates the layout. Useful for prototyping, design handoff, or understanding UI structure.
+| Tab | What it does |
+|-----|-------------|
+| **Analyze** | Describe an image in natural language, answer questions about it |
+| **Detect** | Run Facebook's DETR model locally — returns bounding boxes + labels drawn on the image |
+| **Screenshot → HTML** | Upload any UI screenshot and get clean, semantic HTML/CSS back |
+| **Pipeline** | Structured analysis: description, detected UI elements with types/confidence, categories, extracted text, and optional Q&A |
 
 ---
 
-## Who Should Use This
+## Quick Start
 
-| Use Case | How it helps |
-|----------|-------------|
-| Designers | Turn mockups into HTML instantly |
-| Developers | Convert legacy UI screenshots to working code |
-| Researchers | Batch-analyze and label images without writing code |
-| Product Teams | Demo vision AI capabilities to stakeholders |
-| Students | Experiment with vision models in a friendly UI |
+### 1. Install dependencies
 
----
+```bash
+pip install -r requirements.txt
+```
 
-## How It Helps
+> **Note:** `torch` and `transformers` are included for the DETR object detection model. If you only need the Gemma vision features (no local DETR), you can skip those two packages — the app will automatically fall back to Gemma for object detection.
 
-**Before:** Separate API calls, different SDKs, stitching together outputs manually.
+### 2. Set your API key
 
-**After:** One URL, drag-and-drop upload, instant results in the browser. Works with or without a Gemini API key (mock mode for development).
+```bash
+cp .env.example .env
+# Open .env and add your key (see options below)
+```
+
+#### Option A — OpenRouter (recommended)
+
+OpenRouter provides access to Gemma and 100+ other models through a single OpenAI-compatible API. Sign up at **https://openrouter.ai** and add your key:
+
+```env
+OPENROUTER_API_KEY=sk-or-...
+```
+
+The default model is `google/gemma-4-31b-it` (31B, full vision, 262K context). Override with:
+
+```env
+OPENROUTER_MODEL=google/gemma-4-31b-it
+```
+
+#### Option B — Google AI Studio
+
+Get a free key at **https://aistudio.google.com/app/apikey**:
+
+```env
+GEMINI_API_KEY=AIza...
+```
+
+#### Option C — Mock mode (no key needed)
+
+If neither key is set, the app starts in **mock mode** — all endpoints return realistic demo responses so you can build and test the UI without any API account.
+
+#### Option D — Local inference via Ollama
+
+Install [Ollama](https://ollama.com) and pull Gemma 4:
+
+```bash
+ollama run gemma4
+```
+
+Then point the app at your local Ollama endpoint:
+
+```env
+OPENROUTER_API_KEY=ollama
+OPENROUTER_BASE_URL=http://localhost:11434/v1
+OPENROUTER_MODEL=gemma4
+```
+
+### 3. Start the server
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Open **http://localhost:8000** in your browser.
 
 ---
 
@@ -68,40 +102,16 @@ Upload a screenshot of any UI — a website, app, dashboard — and get back cle
 
 ```
 Browser (index.html)
-    │  drag-drop upload, 3-tab UI
+    │  drag-drop upload, 4-tab UI
     │
     ▼
-FastAPI (app.py) ─── /analyze          ──► GemmaClient (Gemini API / mock)
-                 ─── /segment          ──► ImageSegmenter (DETR, local)
+FastAPI (app.py) ─── /analyze            ──► GemmaClient → OpenRouter or Google AI
+                 ─── /segment            ──► ImageSegmenter (DETR, local)
                  ─── /screenshot-to-html ──► ScreenshotToHTML → GemmaClient
+                 ─── /pipeline           ──► PipelineProcessor → GemmaClient
                  ─── /health
                  ─── / (serves UI)
 ```
-
----
-
-## Quick Start
-
-### Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### Set your API key (optional — works without one in mock mode)
-
-```bash
-cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
-```
-
-### Start the server
-
-```bash
-uvicorn app:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Open `http://localhost:8000` in your browser.
 
 ---
 
@@ -109,22 +119,27 @@ Open `http://localhost:8000` in your browser.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GEMINI_API_KEY` | *(empty)* | Gemini API key — if not set, runs in mock mode |
-| `GEMINI_MODEL` | `gemma-4-31b-it` | Which Gemma model to use |
+| `OPENROUTER_API_KEY` | *(empty)* | OpenRouter key — **recommended provider** |
+| `OPENROUTER_MODEL` | `google/gemma-4-31b-it` | Model to use via OpenRouter |
+| `GEMINI_API_KEY` | *(empty)* | Google AI Studio key — alternative provider |
+| `GEMINI_MODEL` | `gemma-4-31b-it` | Model to use via Google AI |
 | `MAX_IMAGE_SIZE_MB` | `10` | Maximum upload size |
-| `MOCK_MODE` | auto-detected | True if no API key set |
+| `MOCK_MODE` | auto | `True` when no API key is set |
+
+If both `OPENROUTER_API_KEY` and `GEMINI_API_KEY` are set, OpenRouter is used.
 
 ---
 
 ## API Endpoints
 
-| Endpoint | Method | What it does |
-|----------|--------|-------------|
-| `GET /` | GET | Serves the web UI |
-| `POST /analyze` | POST | Analyze image (form: `file`, optional `prompt`) |
-| `POST /segment` | POST | Detect/segment objects (form: `file`) |
-| `POST /screenshot-to-html` | POST | Generate HTML from screenshot (form: `file`) |
-| `GET /health` | GET | Health check + mock mode status |
+| Endpoint | Method | Body | Description |
+|----------|--------|------|-------------|
+| `GET /` | GET | — | Serves the web UI |
+| `GET /health` | GET | — | Health check + mock mode status |
+| `POST /analyze` | POST | `file` (image), `prompt` (optional) | Analyse image with Gemma |
+| `POST /segment` | POST | `file` (image) | Detect objects with DETR (Gemma fallback) |
+| `POST /screenshot-to-html` | POST | `file` (image) | Generate HTML from screenshot |
+| `POST /pipeline` | POST | `file` (image), `question` (optional) | Structured JSON analysis + Q&A |
 
 ---
 
@@ -132,17 +147,18 @@ Open `http://localhost:8000` in your browser.
 
 ```
 gemma4-vision-studio/
-├── app.py               # FastAPI app + all endpoints
-├── gemma_client.py      # Gemini API wrapper with mock fallback
-├── segmenter.py         # DETR object detection (local, no API needed)
-├── screenshot_to_html.py# Screenshot → HTML converter
-├── config.py            # Settings and environment variables
+├── app.py                # FastAPI app + all endpoints
+├── gemma_client.py       # OpenRouter / Google AI client with mock fallback
+├── segmenter.py          # DETR object detection (local, no API needed)
+├── screenshot_to_html.py # Screenshot → HTML converter
+├── pipeline_processor.py # Structured analysis pipeline
+├── config.py             # Settings and environment variables
 ├── requirements.txt
-├── .env.example         # API key template
+├── .env.example          # API key template — copy to .env
 ├── static/
-│   └── index.html       # Dark-themed 3-tab frontend
+│   └── index.html        # Dark-themed 4-tab frontend
 └── tests/
-    └── test_app.py      # 15 pytest tests (all endpoints mocked)
+    └── test_app.py       # 19 pytest tests (all endpoints mocked)
 ```
 
 ---
@@ -153,7 +169,7 @@ gemma4-vision-studio/
 pytest tests/ -v
 ```
 
-15 tests covering all endpoints and core classes. No API key or GPU required — all external calls are mocked.
+19 tests covering all endpoints and core classes. No API key or GPU required — all external calls are mocked.
 
 ---
 

@@ -17,19 +17,21 @@ from config import SEGMENTATION_MODEL, SEGMENTATION_THRESHOLD
 class ImageSegmenter:
     """Image segmentation using DETR (Detection Transformer) model."""
 
-    def __init__(self, model_name: Optional[str] = None, threshold: float = None):
+    def __init__(self, model_name: Optional[str] = None, threshold: float = None, client=None):
         """
         Initialize the ImageSegmenter.
 
         Args:
             model_name: DETR model name (optional, uses default if not provided)
             threshold: Confidence threshold for detection (optional, uses default if not provided)
+            client: Shared GemmaClient instance for fallback (optional, creates new if not provided)
         """
         self.model_name = model_name or SEGMENTATION_MODEL
         self.threshold = threshold or SEGMENTATION_THRESHOLD
         self.model = None
         self.processor = None
         self.use_gemma_fallback = False
+        self._fallback_client = client  # reuse shared client instead of creating a new one
         
         # Try to load DETR model
         try:
@@ -109,18 +111,47 @@ class ImageSegmenter:
             Dictionary containing detected objects from Gemma analysis
         """
         from gemma_client import GemmaClient
-        
-        client = GemmaClient()
+
+        client = self._fallback_client or GemmaClient()
         result = client.analyze_for_segments(image_path)
-        
+
+        # Get image dimensions for coordinate mapping
+        try:
+            img = Image.open(image_path)
+            w, h = img.size
+        except Exception:
+            w, h = 100, 100
+
+        # Map location text → approximate [x_min, y_min, x_max, y_max]
+        loc_map = {
+            "top-left":       (0,     0,     w//3,   h//3),
+            "top-center":     (w//3,  0,     2*w//3, h//3),
+            "top-right":      (2*w//3,0,     w,      h//3),
+            "middle-left":    (0,     h//3,  w//3,   2*h//3),
+            "middle-center":  (w//3,  h//3,  2*w//3, 2*h//3),
+            "middle-right":   (2*w//3,h//3,  w,      2*h//3),
+            "bottom-left":    (0,     2*h//3,w//3,   h),
+            "bottom-center":  (w//3,  2*h//3,2*w//3, h),
+            "bottom-right":   (2*w//3,2*h//3,w,      h),
+        }
+
         detections = []
         if "objects" in result:
             for obj in result["objects"]:
-                detections.append({
-                    "label": obj.get("description", "unknown"),
-                    "confidence": 0.5,  # Default confidence for fallback
-                    "box": [0, 0, 100, 100]  # Placeholder box
-                })
+                desc = obj.get("description", "unknown")
+                parts = [p.strip() for p in desc.split(",")]
+
+                # Parse label, location, confidence from "name, location, confidence"
+                label = parts[0] if parts else desc
+                location_text = parts[1].lower().replace(" ", "-") if len(parts) > 1 else ""
+                try:
+                    confidence = float(parts[2]) if len(parts) > 2 else 0.5
+                    confidence = max(0.0, min(1.0, confidence))
+                except (ValueError, IndexError):
+                    confidence = 0.5
+
+                box = list(loc_map.get(location_text, (0, 0, w, h)))
+                detections.append({"label": label, "confidence": confidence, "box": box})
         
         return {
             "success": result.get("success", False),

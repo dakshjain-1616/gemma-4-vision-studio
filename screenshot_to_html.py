@@ -66,10 +66,10 @@ class ScreenshotToHTML:
             True if valid HTML structure, False otherwise
         """
         # Check for basic HTML tags
-        has_html = re.search(r"<html", html_code, re.IGNORECASE)
-        has_head = re.search(r"<head", html_code, re.IGNORECASE)
-        has_body = re.search(r"<body", html_code, re.IGNORECASE)
-        
+        has_html = bool(re.search(r"<html", html_code, re.IGNORECASE))
+        has_head = bool(re.search(r"<head", html_code, re.IGNORECASE))
+        has_body = bool(re.search(r"<body", html_code, re.IGNORECASE))
+
         return has_html and has_head and has_body
 
     def extract_html(self, text: str) -> Optional[str]:

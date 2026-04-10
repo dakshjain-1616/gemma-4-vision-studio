@@ -7,7 +7,7 @@ import os
 import base64
 import tempfile
 from typing import Optional
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -48,10 +48,10 @@ static_path = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(static_path, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_path), name="static")
 
-# Initialize clients
+# Initialize clients (share gemma_client across all components)
 gemma_client = GemmaClient()
-segmenter = ImageSegmenter()
-screenshot_to_html = ScreenshotToHTML()
+segmenter = ImageSegmenter(client=gemma_client)
+screenshot_to_html = ScreenshotToHTML(client=gemma_client)
 pipeline_processor = PipelineProcessor(client=gemma_client)
 
 
@@ -109,7 +109,7 @@ async def health_check():
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_image(
     file: UploadFile = File(...),
-    prompt: Optional[str] = "Describe this image"
+    prompt: Optional[str] = Form("Describe this image"),
 ):
     """
     Analyze an image using Gemma 4 vision model.
@@ -256,7 +256,7 @@ async def screenshot_to_html_endpoint(file: UploadFile = File(...)):
 @app.post("/pipeline", response_model=PipelineResponse)
 async def pipeline_endpoint(
     file: UploadFile = File(...),
-    question: Optional[str] = None,
+    question: Optional[str] = Form(None),
 ):
     """
     Structured analysis pipeline: description, detected elements, categories,

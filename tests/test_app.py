@@ -294,26 +294,43 @@ def test_config_imports():
     """Test that config module imports correctly."""
     from config import (
         GEMINI_MODEL,
+        OPENROUTER_MODEL,
         MAX_IMAGE_SIZE_MB,
         MOCK_MODE,
-        ALLOWED_FORMATS
+        ALLOWED_FORMATS,
+        API_PROVIDER,
     )
     assert GEMINI_MODEL == "gemma-4-31b-it"
+    assert isinstance(OPENROUTER_MODEL, str) and len(OPENROUTER_MODEL) > 0
     assert MAX_IMAGE_SIZE_MB == 10
     assert isinstance(MOCK_MODE, bool)
     assert isinstance(ALLOWED_FORMATS, list)
+    # API_PROVIDER is None (mock) or one of the valid provider strings
+    assert API_PROVIDER in (None, "openrouter", "google")
 
 
 def test_gemma_client_mock_mode():
-    """Test GemmaClient instantiation in mock mode."""
+    """Test GemmaClient mock mode behaviour (forced via empty api_key)."""
     from gemma_client import GemmaClient
-    
-    client = GemmaClient()
-    assert client.mock_mode is True  # No API key set
-    
-    # Test mock response
-    result = client._mock_response({"contents": [{"parts": [{"text": "test"}]}]})
-    assert "candidates" in result
+
+    # Force mock mode by passing an empty api_key, regardless of .env
+    client = GemmaClient(api_key="")
+    assert client.mock_mode is True
+
+    # _mock_text must cover all prompt branches
+    generic = client._mock_text("describe this image")
+    assert isinstance(generic, str) and len(generic) > 0
+
+    html_mock = client._mock_text("convert to html code")
+    assert "<html" in html_mock.lower()
+
+    seg_mock = client._mock_text("detect objects in image")
+    assert len(seg_mock) > 0
+
+    pipeline_mock = client._mock_text("json with detected_elements and element_type")
+    import json as _json
+    parsed = _json.loads(pipeline_mock)
+    assert "detected_elements" in parsed
 
 
 def test_screenshot_to_html_class():
