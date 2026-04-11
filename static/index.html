@@ -4,834 +4,900 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gemma 4 Vision Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" rel="stylesheet">
   <style>
-    /* ── Design tokens ───────────────────────────────────────── */
     :root {
-      --bg:           #06060f;
-      --surface:      rgba(255,255,255,0.04);
-      --surface-hi:   rgba(255,255,255,0.07);
-      --border:       rgba(255,255,255,0.08);
-      --border-glow:  rgba(124,58,237,0.45);
-      --primary:      #7c3aed;
-      --primary-dim:  rgba(124,58,237,0.15);
-      --primary-lit:  #a78bfa;
-      --cyan:         #06b6d4;
-      --pink:         #ec4899;
-      --green:        #10b981;
-      --amber:        #f59e0b;
-      --red:          #ef4444;
-      --txt:          #f1f5f9;
-      --txt-muted:    #94a3b8;
-      --txt-dim:      #475569;
-      --r:            16px;
-      --r-sm:         10px;
-      --shadow:       0 4px 32px rgba(0,0,0,0.5);
+      --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      --bg:#06060f;--surface:rgba(255,255,255,.04);--surface-hi:rgba(255,255,255,.07);
+      --border:rgba(255,255,255,.08);--primary:#7c3aed;--primary-dim:rgba(124,58,237,.15);
+      --primary-lit:#a78bfa;--cyan:#06b6d4;--green:#10b981;--amber:#f59e0b;--red:#ef4444;
+      --txt:#f1f5f9;--txt-m:#94a3b8;--txt-d:#475569;
+      --r:13px;--r-s:9px;--shadow:0 4px 32px rgba(0,0,0,.5);
+      --topbar-h:56px;--input-w:380px;--drawer-w:340px;--bnav-h:64px;
+      --t:200ms ease;--sk-base:rgba(255,255,255,.055);--sk-hi:rgba(255,255,255,.095);
     }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-family:var(--font);color:var(--txt);background:var(--bg)}
+    body{height:100dvh;overflow:hidden}
+    @media(max-width:680px){body{height:auto;overflow-y:auto;padding-bottom:var(--bnav-h)}}
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    .ambient{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 90% 60% at 50% -10%,rgba(124,58,237,.18),transparent),radial-gradient(ellipse 50% 40% at 85% 90%,rgba(6,182,212,.10),transparent),var(--bg)}
+    .ambient::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);background-size:56px 56px}
 
-    html {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
-      color: var(--txt);
-      background: var(--bg);
-      min-height: 100vh;
-      scroll-behavior: smooth;
-    }
+    #app{position:relative;z-index:1;display:flex;flex-direction:column;height:100dvh}
+    @media(max-width:680px){#app{height:auto;min-height:100dvh}}
 
-    /* Ambient glow + grid */
-    body {
-      min-height: 100vh;
-      background:
-        radial-gradient(ellipse 90% 60% at 50% -10%, rgba(124,58,237,0.18), transparent),
-        radial-gradient(ellipse 50% 40% at 85% 90%, rgba(6,182,212,0.10), transparent),
-        var(--bg);
-    }
-    body::before {
-      content: '';
-      position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background-image:
-        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
-      background-size: 56px 56px;
-    }
+    /* Topbar */
+    #topbar{height:var(--topbar-h);flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 18px;background:rgba(6,6,15,.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);z-index:10}
+    #topbar-left{display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .logo-icon{width:28px;height:28px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,var(--primary),#4338ca);display:flex;align-items:center;justify-content:center;color:#fff}
+    .logo-text{font-size:14px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;background:linear-gradient(135deg,#fff 0%,var(--primary-lit) 55%,var(--cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    #mock-badge{display:none;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#fbbf24;padding:2px 10px;border-radius:100px;font-size:11px;font-weight:600;align-items:center;gap:5px}
+    #mock-badge.on{display:inline-flex}
+    #tab-nav{flex:1;display:flex;align-items:center;justify-content:center;gap:3px}
+    @media(max-width:680px){#tab-nav{display:none}}
+    .tab-btn{display:flex;align-items:center;gap:7px;padding:7px 14px;background:none;border:1px solid transparent;border-radius:9px;color:var(--txt-m);font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;transition:all var(--t);white-space:nowrap}
+    .tab-btn:hover{color:var(--txt);background:var(--surface-hi)}
+    .tab-btn.on{background:linear-gradient(135deg,var(--primary),#4338ca);color:#fff;box-shadow:0 3px 14px rgba(124,58,237,.4)}
+    .tab-btn svg,.icon-btn svg,.btn-p svg,.bnav-btn svg,.logo-icon svg{flex-shrink:0}
+    #topbar-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+    .icon-btn{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--txt-m);font-size:12px;font-weight:500;font-family:var(--font);cursor:pointer;transition:all var(--t)}
+    .icon-btn:hover{color:var(--txt);border-color:rgba(124,58,237,.4);background:var(--surface-hi)}
+    .icon-btn.sm{padding:4px 8px;font-size:11px}
 
-    /* ── Layout ──────────────────────────────────────────────── */
-    .wrap {
-      position: relative; z-index: 1;
-      max-width: 1080px;
-      margin: 0 auto;
-      padding: 48px 20px 96px;
-    }
+    /* Workspace */
+    #workspace{flex:1;display:flex;min-height:0;overflow:hidden}
+    @media(max-width:680px){#workspace{flex-direction:column;overflow:visible;min-height:unset}}
 
-    /* ── Header ──────────────────────────────────────────────── */
-    .hdr { text-align: center; padding-bottom: 52px; }
+    #panel-input{width:var(--input-w);flex-shrink:0;display:flex;flex-direction:column;gap:14px;padding:20px 18px;overflow-y:auto;border-right:1px solid var(--border);background:rgba(255,255,255,.012);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+    @media(max-width:680px){#panel-input{width:100%;border-right:none;border-bottom:1px solid var(--border);overflow-y:visible}}
+    @media(min-width:1440px){#panel-input{width:420px}}
 
-    .hdr-chip {
-      display: inline-flex; align-items: center; gap: 7px;
-      background: var(--primary-dim);
-      border: 1px solid rgba(124,58,237,0.3);
-      border-radius: 100px; padding: 5px 16px;
-      font-size: 11px; font-weight: 600; letter-spacing: .08em;
-      text-transform: uppercase; color: var(--primary-lit);
-      margin-bottom: 22px;
-    }
-    .hdr-chip::before {
-      content: '\25CF'; animation: blink 2.4s ease-in-out infinite;
-    }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+    #panel-output{flex:1;overflow-y:auto;padding:20px;position:relative;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+    @media(max-width:680px){#panel-output{overflow-y:visible;padding:16px}}
 
-    h1 {
-      font-size: clamp(2.1rem, 5.5vw, 3.4rem);
-      font-weight: 800; letter-spacing: -.035em; line-height: 1.1;
-      background: linear-gradient(135deg, #fff 0%, var(--primary-lit) 48%, var(--cyan) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text; margin-bottom: 14px;
-    }
+    /* Drop zone */
+    #dropzone{border:2px dashed var(--border);border-radius:var(--r);padding:32px 16px;text-align:center;cursor:pointer;transition:all var(--t);position:relative;min-height:180px;display:flex;align-items:center;justify-content:center}
+    #dropzone:hover{border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.04)}
+    #dropzone.drag{border-color:var(--primary);background:rgba(124,58,237,.09);box-shadow:0 0 0 4px rgba(124,58,237,.12)}
+    #dropzone.has-img{border-style:solid;padding:14px;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.04)}
+    #file-input{display:none}
+    .dz-idle{display:flex;flex-direction:column;align-items:center;gap:10px}
+    .dz-big-ic{color:var(--txt-d);transition:color var(--t)}
+    #dropzone:hover .dz-big-ic{color:var(--primary-lit)}
+    .dz-title{font-size:14px;font-weight:600;color:var(--txt)}
+    .dz-sub{font-size:12px;color:var(--txt-m)}
+    .dz-preview{display:none;flex-direction:column;align-items:center;gap:8px;width:100%}
+    #dropzone.has-img .dz-idle{display:none}
+    #dropzone.has-img .dz-preview{display:flex}
+    #preview-img{max-height:155px;max-width:100%;border-radius:9px;object-fit:contain;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+    #preview-name{font-size:11.5px;color:var(--txt-m);text-align:center}
+    #clear-btn{display:inline-flex;align-items:center;gap:4px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font);transition:all var(--t)}
+    #clear-btn:hover{background:rgba(239,68,68,.22)}
 
-    .hdr-sub {
-      color: var(--txt-muted); font-size: 1.05rem;
-      max-width: 520px; margin: 0 auto 18px; line-height: 1.6;
-    }
+    /* Fields */
+    .field{display:flex;flex-direction:column;gap:7px}
+    .field label{font-size:12px;font-weight:500;color:var(--txt-m);display:flex;align-items:center;gap:6px}
+    .opt{font-size:10.5px;color:var(--txt-d);font-weight:400}
+    .text-in{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--r-s);padding:10px 13px;color:var(--txt);font-size:13.5px;font-family:var(--font);width:100%;transition:all var(--t)}
+    .text-in::placeholder{color:var(--txt-d)}
+    .text-in:focus{outline:none;border-color:rgba(124,58,237,.5);box-shadow:0 0 0 3px rgba(124,58,237,.12)}
 
-    .hdr-pills {
-      display: flex; justify-content: center; align-items: center;
-      gap: 10px; flex-wrap: wrap;
-    }
-    .pill {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 100px; padding: 4px 12px;
-      font-size: 12px; color: var(--txt-muted);
-      text-decoration: none; transition: all .2s;
-    }
-    .pill:hover { border-color: rgba(124,58,237,.35); color: var(--primary-lit); }
-    .pill-warn {
-      background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.3);
-      color: #fbbf24; display: none;
-    }
-    .pill-warn.on { display: inline-flex; }
+    /* Buttons */
+    #action-row{display:flex;flex-direction:column;gap:8px}
+    .btn-p{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;background:linear-gradient(135deg,var(--primary),#4338ca);border:none;border-radius:var(--r-s);color:#fff;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;transition:all var(--t);box-shadow:0 4px 18px rgba(124,58,237,.3)}
+    .btn-p:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(124,58,237,.45)}
+    .btn-p:active{transform:none}
+    .btn-p:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .kb{background:rgba(255,255,255,.15);border-radius:4px;padding:1px 5px;font-size:11px;font-family:var(--font)}
+    .btn-g{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-s);color:var(--txt-m);font-size:12.5px;font-weight:500;font-family:var(--font);cursor:pointer;transition:all var(--t)}
+    .btn-g:hover{background:var(--surface-hi);color:var(--txt)}
 
-    /* ── Tabs ────────────────────────────────────────────────── */
-    .tabs-bar {
-      background: rgba(255,255,255,0.025);
-      border: 1px solid var(--border); border-radius: 14px;
-      padding: 4px; display: flex; gap: 3px; margin-bottom: 28px;
-    }
-    .tab-btn {
-      flex: 1; display: flex; align-items: center; justify-content: center;
-      gap: 7px; padding: 11px 10px;
-      background: none; border: none; border-radius: 10px;
-      color: var(--txt-muted); font-size: 13.5px; font-weight: 500;
-      cursor: pointer; transition: all .2s; white-space: nowrap;
-    }
-    .tab-btn:hover { color: var(--txt); background: var(--surface-hi); }
-    .tab-btn.on {
-      background: linear-gradient(135deg, var(--primary), #4338ca);
-      color: #fff;
-      box-shadow: 0 4px 18px rgba(124,58,237,.45);
-    }
-    .t-icon { font-size: 15px; }
-    .t-lbl { display: none; }
-    @media(min-width:460px){ .t-lbl { display: inline; } }
+    /* Error */
+    #error-banner{display:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.24);border-radius:var(--r-s);padding:12px 14px;color:#fca5a5;font-size:13px;line-height:1.5;align-items:center;gap:8px}
+    #error-banner.on{display:flex}
 
-    /* ── Tab panes ───────────────────────────────────────────── */
-    .pane { display: none; flex-direction: column; gap: 18px; }
-    .pane.on {
-      display: flex;
-      animation: fadeUp .25s ease both;
-    }
-    @keyframes fadeUp {
-      from { opacity:0; transform:translateY(10px); }
-      to   { opacity:1; transform:translateY(0);    }
-    }
+    /* Spinner */
+    .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:rot .65s linear infinite}
+    @keyframes rot{to{transform:rotate(360deg)}}
 
-    /* ── Card ────────────────────────────────────────────────── */
-    .card {
-      background: var(--surface);
-      backdrop-filter: blur(18px);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      padding: 24px 26px;
-      box-shadow: var(--shadow);
-    }
+    /* Empty */
+    #output-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:300px;gap:14px;text-align:center}
+    .empty-ic{color:var(--txt-d);opacity:.3;animation:pu 3s ease-in-out infinite}
+    @keyframes pu{0%,100%{opacity:.2}50%{opacity:.4}}
+    .empty-txt{font-size:14px;line-height:1.7;color:var(--txt-d)}
 
-    /* ── Upload zone ─────────────────────────────────────────── */
-    .drop-zone {
-      border: 2px dashed var(--border);
-      border-radius: var(--r); padding: 52px 20px;
-      text-align: center; cursor: pointer;
-      transition: all .2s; position: relative;
-    }
-    .drop-zone:hover {
-      border-color: rgba(124,58,237,.4);
-      background: rgba(124,58,237,.04);
-    }
-    .drop-zone.drag {
-      border-color: var(--primary);
-      background: rgba(124,58,237,.09);
-      box-shadow: 0 0 0 4px rgba(124,58,237,.12);
-    }
-    .drop-zone.has-img {
-      border-style: solid; padding: 18px;
-      border-color: rgba(16,185,129,.4);
-      background: rgba(16,185,129,.04);
-    }
-    .dz-icon { font-size: 44px; display: block; margin-bottom: 12px; }
-    .dz-title { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
-    .dz-sub { font-size: 13px; color: var(--txt-muted); }
+    /* Skeleton */
+    @keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
+    .sk{background:linear-gradient(90deg,var(--sk-base) 25%,var(--sk-hi) 50%,var(--sk-base) 75%);background-size:600px 100%;animation:shimmer 1.4s infinite linear;border-radius:6px}
+    .sk-ln{height:13px;margin-bottom:10px}
+    .w100{width:100%}.w80{width:80%}.w70{width:70%}.w60{width:60%}.w50{width:50%}
+    .sk-img{height:220px;width:100%;margin-bottom:14px;border-radius:10px}
+    .sk-det{height:42px;margin-bottom:8px;border-radius:8px}
+    .sk-card{height:90px;border-radius:10px}
+    .sk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+    .skel{display:none;flex-direction:column;animation:fadeUp .2s ease}
+    .skel.on{display:flex}
 
-    .dz-placeholder { display: block; }
-    .dz-preview { display: none; flex-direction: column; align-items: center; gap: 10px; }
-    .has-img .dz-placeholder { display: none; }
-    .has-img .dz-preview { display: flex; }
+    /* Results */
+    .rpane{display:none;flex-direction:column;gap:16px;animation:fadeUp .3s ease}
+    .rpane.on{display:flex}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .rh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .rl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--txt-m);flex:1}
+    .ra{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .card{background:var(--surface);backdrop-filter:blur(18px);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;box-shadow:var(--shadow)}
+    .prose{line-height:1.8;color:var(--txt);font-size:14.5px;white-space:pre-wrap;word-break:break-word}
+    .prose-m{color:var(--txt-m);font-size:13.5px}
 
-    .prev-img {
-      max-height: 190px; max-width: 100%; border-radius: 10px;
-      box-shadow: 0 6px 24px rgba(0,0,0,.45); object-fit: contain;
-    }
-    .prev-name { font-size: 12px; color: var(--txt-muted); }
-    .prev-clear {
-      background: rgba(239,68,68,.13); border: 1px solid rgba(239,68,68,.3);
-      color: #fca5a5; padding: 4px 12px; border-radius: 7px;
-      font-size: 12px; cursor: pointer; transition: all .2s;
-    }
-    .prev-clear:hover { background: rgba(239,68,68,.24); }
+    /* Compare slider */
+    #compare-wrap{position:relative;width:100%;overflow:hidden;border-radius:var(--r);cursor:col-resize;background:#000;min-height:200px}
+    #cmp-orig,#cmp-ann{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;display:block}
+    #cmp-orig{z-index:1}
+    #cmp-ann{z-index:2;clip-path:inset(0 50% 0 0)}
+    #cmp-handle{position:absolute;top:0;bottom:0;left:50%;z-index:3;width:3px;background:rgba(255,255,255,.9);cursor:col-resize;transform:translateX(-50%);display:flex;align-items:center;justify-content:center}
+    #cmp-knob{width:34px;height:34px;border-radius:50%;background:white;color:#333;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.5);user-select:none}
+    .cmp-lbl{position:absolute;bottom:8px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;z-index:4;pointer-events:none;text-transform:uppercase;letter-spacing:.06em}
+    .cmp-lbl-l{left:8px}.cmp-lbl-r{right:8px}
 
-    input[type=file] { display: none; }
+    /* Detection list */
+    .det-list{display:flex;flex-direction:column;gap:7px}
+    .det-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-s);padding:10px 14px}
+    .det-lbl{font-weight:600;font-size:13.5px;text-transform:capitalize;flex:1}
+    .conf-wrap{flex:2;display:flex;align-items:center;gap:10px}
+    .conf-bg{flex:1;height:5px;background:var(--border);border-radius:100px;overflow:hidden}
+    .conf-fg{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--primary),var(--cyan));transition:width .6s ease}
+    .conf-pct{font-size:11px;color:var(--txt-m);width:32px;text-align:right}
+    .cnt{background:var(--primary-dim);border:1px solid rgba(124,58,237,.25);color:var(--primary-lit);padding:1px 8px;border-radius:100px;font-size:11px;font-weight:600}
 
-    /* ── Form controls ───────────────────────────────────────── */
-    .field { display: flex; flex-direction: column; gap: 7px; }
-    label { font-size: 12.5px; font-weight: 500; color: var(--txt-muted); }
-    label small { color: var(--txt-dim); }
+    /* HTML code pane */
+    #html-code-pane{display:flex;flex-direction:column;gap:0}
+    .code-hdr{display:flex;align-items:center;gap:6px;padding:4px 0 10px;flex-wrap:wrap}
+    .code-hdr .rl{flex:1}
+    #html-pre{margin:0;border-radius:var(--r);overflow:auto;max-height:calc(100dvh - var(--topbar-h) - 130px);min-height:220px;font-size:13px;line-height:1.6;border:1px solid var(--border)}
+    #html-pre code.hljs{border-radius:var(--r);padding:18px 20px;font-family:'Fira Code','Cascadia Code','Consolas',monospace;font-size:13px}
+    @media(max-width:680px){#html-pre{max-height:450px}}
 
-    input[type=text] {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border); border-radius: var(--r-sm);
-      padding: 11px 15px; color: var(--txt); font-size: 14px;
-      font-family: inherit; width: 100%; transition: all .2s;
-    }
-    input[type=text]::placeholder { color: var(--txt-dim); }
-    input[type=text]:focus {
-      outline: none;
-      border-color: rgba(124,58,237,.5);
-      box-shadow: 0 0 0 3px rgba(124,58,237,.12);
-    }
+    /* Pipeline */
+    .tag-row{display:flex;flex-wrap:wrap;gap:6px}
+    .tag{background:var(--primary-dim);border:1px solid rgba(124,58,237,.28);color:var(--primary-lit);padding:3px 12px;border-radius:100px;font-size:12px}
+    .elem-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px}
+    .elem-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;transition:all var(--t)}
+    .elem-card:hover{border-color:rgba(124,58,237,.3);background:rgba(124,58,237,.05)}
+    .elem-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+    .elem-desc{font-size:12.5px;color:var(--txt-m);line-height:1.5}
+    .elem-txt{font-size:11px;color:var(--txt-d);margin-top:6px;font-style:italic}
+    .elem-conf{font-size:11px;color:var(--txt-d);margin-top:7px}
+    .b-button{background:rgba(124,58,237,.18);color:#c4b5fd;border:1px solid rgba(124,58,237,.3)}
+    .b-text{background:rgba(6,182,212,.13);color:#67e8f9;border:1px solid rgba(6,182,212,.3)}
+    .b-image{background:rgba(236,72,153,.13);color:#f9a8d4;border:1px solid rgba(236,72,153,.3)}
+    .b-chart{background:rgba(245,158,11,.13);color:#fcd34d;border:1px solid rgba(245,158,11,.3)}
+    .b-table{background:rgba(16,185,129,.13);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+    .b-form,.b-input{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+    .b-navigation,.b-nav,.b-menu,.b-footer{background:rgba(99,102,241,.15);color:#c7d2fe;border:1px solid rgba(99,102,241,.3)}
+    .b-header{background:rgba(251,191,36,.13);color:#fde68a;border:1px solid rgba(251,191,36,.3)}
+    .b-card{background:rgba(6,182,212,.10);color:#a5f3fc;border:1px solid rgba(6,182,212,.25)}
+    .b-icon{background:rgba(236,72,153,.10);color:#fbcfe8;border:1px solid rgba(236,72,153,.25)}
+    .b-other,.b-default{background:rgba(255,255,255,.06);color:var(--txt-m);border:1px solid var(--border)}
+    .qa-box{background:rgba(124,58,237,.07);border:1px solid rgba(124,58,237,.22);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+    .qa-q{font-size:13px;color:var(--primary-lit);font-weight:500}
+    .qa-a{color:var(--txt);line-height:1.75;font-size:14px}
 
-    /* ── Buttons ─────────────────────────────────────────────── */
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center;
-      gap: 7px; padding: 11px 22px; border: none; border-radius: var(--r-sm);
-      font-size: 14px; font-weight: 600; cursor: pointer;
-      transition: all .2s; white-space: nowrap;
-    }
-    .btn-p {
-      background: linear-gradient(135deg, var(--primary), #4338ca);
-      color: #fff; box-shadow: 0 4px 18px rgba(124,58,237,.3);
-    }
-    .btn-p:hover { transform: translateY(-1px); box-shadow: 0 6px 26px rgba(124,58,237,.45); }
-    .btn-p:active { transform: none; }
-    .btn-p:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-    .btn-s {
-      background: var(--surface); border: 1px solid var(--border);
-      color: var(--txt-muted);
-    }
-    .btn-s:hover { background: var(--surface-hi); color: var(--txt); }
-    .btn-xs { padding: 5px 12px; font-size: 12px; border-radius: 7px; }
-    .btn-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    /* Drawer */
+    #drawer{position:fixed;top:0;right:0;bottom:0;width:var(--drawer-w);max-width:90vw;background:rgba(8,8,18,.97);backdrop-filter:blur(24px);border-left:1px solid var(--border);z-index:1000;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column}
+    #drawer.on{transform:translateX(0)}
+    #doverlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:none}
+    #doverlay.on{display:block}
+    .dr-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--border)}
+    .dr-hdr h2{font-size:15px;font-weight:700}
+    .dr-sec{padding:18px 20px;border-bottom:1px solid var(--border)}
+    .dr-sec h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txt-m);margin-bottom:12px}
+    .info-list{display:flex;flex-direction:column;gap:12px}
+    .info-row{display:flex;flex-direction:column;gap:3px}
+    .info-row dt{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-d)}
+    .info-row dd{font-size:14px;color:var(--txt)}
+    .sk-tbl{width:100%;border-collapse:collapse}
+    .sk-tbl tr{border-bottom:1px solid var(--border)}
+    .sk-tbl tr:last-child{border-bottom:none}
+    .sk-tbl td{padding:8px 4px;font-size:13px;color:var(--txt-m);vertical-align:middle}
+    .sk-tbl td:first-child{width:130px;white-space:nowrap}
+    kbd{background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px;font-family:var(--font);color:var(--txt)}
+    .dr-links{padding:18px 20px;display:flex;flex-direction:column;gap:8px}
+    .pill-a{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:6px 14px;font-size:12px;color:var(--txt-m);text-decoration:none;transition:all var(--t);width:fit-content}
+    .pill-a:hover{color:var(--txt);border-color:rgba(124,58,237,.35);background:var(--surface-hi)}
 
-    /* ── Spinner ─────────────────────────────────────────────── */
-    .spin {
-      width: 17px; height: 17px;
-      border: 2px solid rgba(255,255,255,.25);
-      border-top-color: #fff; border-radius: 50%;
-      animation: rot .65s linear infinite; display:inline-block;
-    }
-    @keyframes rot { to { transform: rotate(360deg); } }
+    /* Mobile bottom nav */
+    #bnav{position:fixed;bottom:0;left:0;right:0;height:var(--bnav-h);background:rgba(6,6,15,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);z-index:100;display:none;justify-content:stretch}
+    @media(max-width:680px){#bnav{display:flex}}
+    .bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:none;border:none;color:var(--txt-d);cursor:pointer;transition:all var(--t);font-family:var(--font)}
+    .bnav-btn .bl{font-size:10px;font-weight:500}
+    .bnav-btn.on{color:var(--primary-lit)}
 
-    /* ── Result sections ─────────────────────────────────────── */
-    .result { display: none; }
-    .result.on { display: flex; flex-direction: column; gap: 16px; animation: fadeUp .3s ease; }
+    /* Toast */
+    #toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:500;opacity:0;transform:translateY(14px);transition:all .3s ease;pointer-events:none;max-width:260px}
+    #toast.on{opacity:1;transform:translateY(0)}
+    #toast.err{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.3);color:#fca5a5}
+    @media(max-width:680px){#toast{bottom:calc(var(--bnav-h) + 12px);right:12px;left:12px;text-align:center}}
 
-    .rh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .rl { font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--txt-muted); }
-    .rt { line-height: 1.75; color: var(--txt); font-size: 15px; }
-    .result-img { width: 100%; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
-
-    /* ── Detection list ──────────────────────────────────────── */
-    .det-list { display: flex; flex-direction: column; gap: 7px; }
-    .det-row {
-      display: flex; align-items: center; gap: 12px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r-sm); padding: 11px 15px;
-    }
-    .det-lbl { font-weight: 600; font-size: 14px; text-transform: capitalize; flex: 1; }
-    .conf-wrap { flex: 2; display: flex; align-items: center; gap: 10px; }
-    .conf-bg { flex: 1; height: 6px; background: var(--border); border-radius: 100px; overflow: hidden; }
-    .conf-fg { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--primary), var(--cyan)); }
-    .conf-pct { font-size: 11.5px; color: var(--txt-muted); width: 36px; text-align: right; }
-
-    /* ── HTML split ──────────────────────────────────────────── */
-    .html-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    @media(max-width:680px){ .html-split { grid-template-columns: 1fr; } }
-
-    .html-frame {
-      width: 100%; height: 340px; border: 1px solid var(--border);
-      border-radius: 12px; background: #fff;
-    }
-    pre.html-code {
-      background: rgba(0,0,0,.5); border: 1px solid var(--border);
-      border-radius: 12px; padding: 16px; overflow: auto; max-height: 340px;
-      font-size: 12px; line-height: 1.6; color: #c9d1d9; margin: 0;
-    }
-    pre.html-code code { font-family: 'Fira Code','Cascadia Code','Consolas',monospace; white-space: pre; }
-
-    /* ── Pipeline elements grid ──────────────────────────────── */
-    .elem-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(196px,1fr)); gap: 10px; }
-    .elem-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 14px; transition: all .2s;
-    }
-    .elem-card:hover { border-color: rgba(124,58,237,.3); background: rgba(124,58,237,.05); }
-    .elem-badge {
-      display: inline-block; padding: 2px 8px; border-radius: 6px;
-      font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
-      margin-bottom: 8px;
-    }
-    .elem-desc { font-size: 13px; color: var(--txt-muted); line-height: 1.5; }
-    .elem-text { font-size: 11.5px; color: var(--txt-dim); margin-top: 6px; font-style: italic; }
-    .elem-conf { font-size: 11px; color: var(--txt-dim); margin-top: 8px; }
-
-    /* badge palette */
-    .b-button   { background:rgba(124,58,237,.18); color:#c4b5fd; border:1px solid rgba(124,58,237,.3); }
-    .b-text     { background:rgba(6,182,212,.13);  color:#67e8f9; border:1px solid rgba(6,182,212,.3);  }
-    .b-image    { background:rgba(236,72,153,.13); color:#f9a8d4; border:1px solid rgba(236,72,153,.3); }
-    .b-chart    { background:rgba(245,158,11,.13); color:#fcd34d; border:1px solid rgba(245,158,11,.3); }
-    .b-table    { background:rgba(16,185,129,.13); color:#6ee7b7; border:1px solid rgba(16,185,129,.3); }
-    .b-form,.b-input { background:rgba(239,68,68,.12); color:#fca5a5; border:1px solid rgba(239,68,68,.3); }
-    .b-navigation,.b-nav,.b-menu,.b-footer { background:rgba(99,102,241,.15); color:#c7d2fe; border:1px solid rgba(99,102,241,.3); }
-    .b-header   { background:rgba(251,191,36,.13); color:#fde68a; border:1px solid rgba(251,191,36,.3); }
-    .b-card     { background:rgba(6,182,212,.10);  color:#a5f3fc; border:1px solid rgba(6,182,212,.25); }
-    .b-icon     { background:rgba(236,72,153,.10); color:#fbcfe8; border:1px solid rgba(236,72,153,.25); }
-    .b-other,.b-default { background:rgba(255,255,255,.06); color:var(--txt-muted); border:1px solid var(--border); }
-
-    /* ── Categories / tags ───────────────────────────────────── */
-    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
-    .tag {
-      background: var(--primary-dim); border: 1px solid rgba(124,58,237,.28);
-      color: var(--primary-lit); padding: 3px 12px; border-radius: 100px; font-size: 12px;
-    }
-
-    /* ── Q&A block ───────────────────────────────────────────── */
-    .qa-box {
-      background: rgba(124,58,237,.07); border: 1px solid rgba(124,58,237,.22);
-      border-radius: 12px; padding: 18px 20px;
-    }
-    .qa-q { font-size: 13px; color: var(--primary-lit); font-weight: 500; margin-bottom: 8px; }
-    .qa-a { color: var(--txt); line-height: 1.75; }
-
-    /* ── Error block ─────────────────────────────────────────── */
-    .err {
-      display: none; background: rgba(239,68,68,.08);
-      border: 1px solid rgba(239,68,68,.24); border-radius: 12px;
-      padding: 14px 18px; color: #fca5a5; font-size: 14px;
-    }
-    .err.on { display: block; }
-
-    /* ── Toast ───────────────────────────────────────────────── */
-    #toast {
-      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
-      background: rgba(16,185,129,.14); border: 1px solid rgba(16,185,129,.3);
-      color: #6ee7b7; padding: 10px 18px; border-radius: 10px;
-      font-size: 13px; font-weight: 500;
-      opacity: 0; transform: translateY(16px);
-      transition: all .3s ease; pointer-events: none;
-    }
-    #toast.on { opacity: 1; transform: translateY(0); }
-
-    /* ── Footer ──────────────────────────────────────────────── */
-    .footer {
-      text-align: center; padding-top: 52px;
-      color: var(--txt-dim); font-size: 13px; line-height: 2;
-    }
-    .footer a { color: var(--primary-lit); text-decoration: none; }
-    .footer a:hover { text-decoration: underline; }
+    .hidden{display:none!important}
+    .valid-lbl{font-size:12px;color:#6ee7b7}
+    .invalid-lbl{font-size:12px;color:#fca5a5}
   </style>
 </head>
 <body>
-<div class="wrap">
+<div class="ambient" aria-hidden="true"></div>
+<div id="app">
 
-  <!-- Header -->
-  <header class="hdr">
-    <div class="hdr-chip">Powered by Gemma 4 &middot; Vision AI</div>
-    <h1>Gemma 4 Vision Studio</h1>
-    <p class="hdr-sub">
-      Four vision AI capabilities in one interface &mdash; analysis, object detection,
-      screenshot-to-code, and a structured element pipeline.
-    </p>
-    <div class="hdr-pills">
-      <span class="pill pill-warn" id="mockPill">&#9888; Mock Mode &mdash; no API key</span>
-      <a class="pill" href="/health" target="_blank">&#9889; Health</a>
-      <a class="pill" href="https://heyneo.com" target="_blank">&#129302; Built with NEO</a>
-      <a class="pill" href="https://marketplace.visualstudio.com/items?itemName=NeoResearchInc.heyneo" target="_blank">VS Code Extension</a>
+  <header id="topbar">
+    <div id="topbar-left">
+      <div class="logo-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M19 3l.75 2.25L22 6l-2.25.75L19 9l-.75-2.25L16 6l2.25-.75z"/></svg>
+      </div>
+      <span class="logo-text">Gemma 4 Vision Studio</span>
+      <span id="mock-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Mock Mode
+      </span>
+    </div>
+
+    <nav id="tab-nav" role="tablist">
+      <button class="tab-btn on" role="tab" data-tab="analyze" aria-selected="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Analyze
+      </button>
+      <button class="tab-btn" role="tab" data-tab="detect" aria-selected="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+        Detect
+      </button>
+      <button class="tab-btn" role="tab" data-tab="html" aria-selected="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+        Screenshot → HTML
+      </button>
+      <button class="tab-btn" role="tab" data-tab="pipeline" aria-selected="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg>
+        Pipeline
+      </button>
+    </nav>
+
+    <div id="topbar-right">
+      <button class="icon-btn" id="settings-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Info
+      </button>
     </div>
   </header>
 
-  <!-- Tab bar -->
-  <div class="tabs-bar" role="tablist">
-    <button class="tab-btn on" onclick="tab('analyze')" data-t="analyze">
-      <span class="t-icon">&#128269;</span><span class="t-lbl">Analyze</span>
-    </button>
-    <button class="tab-btn" onclick="tab('detect')" data-t="detect">
-      <span class="t-icon">&#128230;</span><span class="t-lbl">Detect</span>
-    </button>
-    <button class="tab-btn" onclick="tab('html')" data-t="html">
-      <span class="t-icon">&#128187;</span><span class="t-lbl">Screenshot &rarr; HTML</span>
-    </button>
-    <button class="tab-btn" onclick="tab('pipeline')" data-t="pipeline">
-      <span class="t-icon">&#9889;</span><span class="t-lbl">Pipeline</span>
-    </button>
-  </div>
+  <main id="workspace">
+    <section id="panel-input">
 
-  <!-- ═══ Tab: Analyze ═══════════════════════════════════════════════════ -->
-  <div class="pane on" id="pane-analyze">
-    <div class="card">
-      <div id="dz-analyze" class="drop-zone"
-           onclick="document.getElementById('f-analyze').click()"
-           ondragover="dzOver(event,this)" ondragleave="dzLeave(this)"
-           ondrop="dzDrop(event,'f-analyze','dz-analyze','pi-analyze','pn-analyze')">
-        <span class="dz-placeholder">
-          <span class="dz-icon">&#128444;</span>
-          <div class="dz-title">Drop an image here, or click to browse</div>
-          <div class="dz-sub">JPG &middot; PNG &middot; GIF &middot; WebP &mdash; up to 10 MB</div>
-        </span>
+      <div id="dropzone" role="button" tabindex="0" aria-label="Upload image">
+        <div class="dz-idle">
+          <span class="dz-big-ic" id="dz-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+          </span>
+          <p class="dz-title">Drop image or click to browse</p>
+          <p class="dz-sub">JPG · PNG · GIF · WebP — up to 10 MB</p>
+        </div>
         <div class="dz-preview">
-          <img class="prev-img" id="pi-analyze" src="" alt="preview">
-          <span class="prev-name" id="pn-analyze"></span>
-          <button class="prev-clear" onclick="dzClear(event,'f-analyze','dz-analyze')">&#10005; Remove</button>
+          <img id="preview-img" src="" alt="Preview">
+          <span id="preview-name"></span>
+          <button id="clear-btn" type="button">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Remove
+          </button>
         </div>
       </div>
-      <input type="file" id="f-analyze" accept="image/*"
-             onchange="dzSelect(this,'dz-analyze','pi-analyze','pn-analyze')">
-    </div>
+      <input type="file" id="file-input" accept="image/*">
 
-    <div class="card">
-      <div class="field">
-        <label>Prompt <small>(optional)</small></label>
-        <input type="text" id="prompt-analyze"
-               value="Describe this image in detail"
-               placeholder="Ask anything about the image&hellip;">
+      <div class="field" id="prompt-field">
+        <label for="prompt-in">Prompt <span class="opt">optional</span></label>
+        <input type="text" id="prompt-in" class="text-in" value="Describe this image in detail" placeholder="Ask anything about the image…">
       </div>
-    </div>
 
-    <div class="btn-row">
-      <button class="btn btn-p" id="btn-analyze" onclick="runAnalyze()">
-        &#10024; Analyze Image
-      </button>
-    </div>
-
-    <div class="err" id="err-analyze"></div>
-
-    <div class="result" id="res-analyze">
-      <div class="card">
-        <div class="rh">
-          <span class="rl">Analysis Result</span>
-          <button class="btn btn-s btn-xs" onclick="cp('txt-analyze')">&#128203; Copy</button>
-        </div>
-        <div class="rt" id="txt-analyze"></div>
+      <div class="field hidden" id="question-field">
+        <label for="question-in">Question <span class="opt">optional</span></label>
+        <input type="text" id="question-in" class="text-in" placeholder="What is the purpose of this UI?">
       </div>
-    </div>
-  </div>
 
-  <!-- ═══ Tab: Detect ════════════════════════════════════════════════════ -->
-  <div class="pane" id="pane-detect">
-    <div class="card">
-      <div id="dz-detect" class="drop-zone"
-           onclick="document.getElementById('f-detect').click()"
-           ondragover="dzOver(event,this)" ondragleave="dzLeave(this)"
-           ondrop="dzDrop(event,'f-detect','dz-detect','pi-detect','pn-detect')">
-        <span class="dz-placeholder">
-          <span class="dz-icon">&#127919;</span>
-          <div class="dz-title">Drop an image here, or click to browse</div>
-          <div class="dz-sub">Object detection via DETR + Gemma 4 fallback</div>
+      <div id="action-row">
+        <button id="run-btn" class="btn-p" type="button">
+          <span id="run-icon"></span>
+          <span id="run-lbl">Analyze Image</span>
+          <kbd class="kb">⌘↵</kbd>
+        </button>
+        <button id="clear-res-btn" class="btn-g hidden" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Clear Results
+          <kbd>Esc</kbd>
+        </button>
+      </div>
+
+      <div id="error-banner" role="alert">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span id="error-msg"></span>
+      </div>
+
+    </section>
+
+    <section id="panel-output" aria-live="polite" aria-label="Results">
+
+      <div id="output-empty">
+        <span class="empty-ic">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
         </span>
-        <div class="dz-preview">
-          <img class="prev-img" id="pi-detect" src="" alt="preview">
-          <span class="prev-name" id="pn-detect"></span>
-          <button class="prev-clear" onclick="dzClear(event,'f-detect','dz-detect')">&#10005; Remove</button>
-        </div>
+        <p class="empty-txt">Upload an image and run analysis<br>to see results here</p>
       </div>
-      <input type="file" id="f-detect" accept="image/*"
-             onchange="dzSelect(this,'dz-detect','pi-detect','pn-detect')">
-    </div>
 
-    <div class="btn-row">
-      <button class="btn btn-p" id="btn-detect" onclick="runDetect()">
-        &#127919; Detect Objects
-      </button>
-    </div>
-
-    <div class="err" id="err-detect"></div>
-
-    <div class="result" id="res-detect">
-      <div class="card">
-        <div class="rh"><span class="rl">Annotated Image</span></div>
-        <img class="result-img" id="det-img" src="" alt="annotated">
+      <div id="sk-analyze" class="skel">
+        <div class="card"><div class="sk sk-ln w50" style="margin-bottom:16px"></div><div class="sk sk-ln w100"></div><div class="sk sk-ln w80"></div><div class="sk sk-ln w100"></div><div class="sk sk-ln w60"></div><div class="sk sk-ln w100"></div><div class="sk sk-ln w70"></div></div>
       </div>
-      <div class="card">
-        <div class="rh">
-          <span class="rl">Detections</span>
-          <span id="det-count" style="font-size:13px;color:var(--txt-muted)"></span>
-        </div>
-        <div class="det-list" id="det-list"></div>
+      <div id="sk-detect" class="skel">
+        <div class="sk sk-img"></div><div class="sk sk-det"></div><div class="sk sk-det"></div><div class="sk sk-det w80"></div>
       </div>
-    </div>
-  </div>
-
-  <!-- ═══ Tab: Screenshot → HTML ════════════════════════════════════════ -->
-  <div class="pane" id="pane-html">
-    <div class="card">
-      <div id="dz-html" class="drop-zone"
-           onclick="document.getElementById('f-html').click()"
-           ondragover="dzOver(event,this)" ondragleave="dzLeave(this)"
-           ondrop="dzDrop(event,'f-html','dz-html','pi-html','pn-html')">
-        <span class="dz-placeholder">
-          <span class="dz-icon">&#128187;</span>
-          <div class="dz-title">Drop a UI screenshot here, or click to browse</div>
-          <div class="dz-sub">Generates clean semantic HTML + inline CSS via Gemma 4</div>
-        </span>
-        <div class="dz-preview">
-          <img class="prev-img" id="pi-html" src="" alt="preview">
-          <span class="prev-name" id="pn-html"></span>
-          <button class="prev-clear" onclick="dzClear(event,'f-html','dz-html')">&#10005; Remove</button>
-        </div>
+      <div id="sk-html" class="skel">
+        <div class="sk" style="height:220px;width:100%;border-radius:10px;margin-bottom:10px"></div><div class="sk sk-ln w100"></div><div class="sk sk-ln w80"></div><div class="sk sk-ln w60"></div>
       </div>
-      <input type="file" id="f-html" accept="image/*"
-             onchange="dzSelect(this,'dz-html','pi-html','pn-html')">
-    </div>
+      <div id="sk-pipeline" class="skel">
+        <div class="card"><div class="sk sk-ln w100"></div><div class="sk sk-ln w80"></div><div class="sk sk-ln w60"></div><div class="sk-grid"><div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div></div></div>
+      </div>
 
-    <div class="btn-row">
-      <button class="btn btn-p" id="btn-html" onclick="runHtml()">
-        &#9881; Generate HTML
-      </button>
-    </div>
-
-    <div class="err" id="err-html"></div>
-
-    <div class="result" id="res-html">
-      <div class="card">
-        <div class="html-split">
-          <div>
-            <div class="rh">
-              <span class="rl">Live Preview</span>
-              <span id="html-valid" style="font-size:12px"></span>
+      <!-- Analyze result -->
+      <div id="res-analyze" class="rpane">
+        <div class="card">
+          <div class="rh">
+            <span class="rl">Analysis Result</span>
+            <div class="ra">
+              <button class="icon-btn sm" id="copy-analyze">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                Copy
+              </button>
+              <button class="icon-btn sm" id="dl-analyze">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                .txt
+              </button>
             </div>
-            <iframe id="html-frame" class="html-frame" sandbox="allow-same-origin"></iframe>
           </div>
-          <div>
-            <div class="rh">
-              <span class="rl">HTML Source</span>
-              <button class="btn btn-s btn-xs" onclick="cp('html-code')">&#128203; Copy</button>
+          <div id="analyze-text" class="prose"></div>
+        </div>
+      </div>
+
+      <!-- Detect result -->
+      <div id="res-detect" class="rpane">
+        <div>
+          <div class="rh">
+            <span class="rl">Image Comparison</span>
+            <div class="ra">
+              <span style="font-size:11px;color:var(--txt-d)">drag to compare</span>
+              <button class="icon-btn sm" id="dl-detect">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                .png
+              </button>
             </div>
-            <pre class="html-code"><code id="html-code"></code></pre>
+          </div>
+          <div id="compare-wrap">
+            <img id="cmp-orig" src="" alt="Original">
+            <img id="cmp-ann"  src="" alt="Annotated">
+            <div id="cmp-handle" role="slider" aria-label="Compare" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" tabindex="0">
+              <div id="cmp-knob">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/></svg>
+              </div>
+            </div>
+            <span class="cmp-lbl cmp-lbl-l">Original</span>
+            <span class="cmp-lbl cmp-lbl-r">Annotated</span>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ Tab: Pipeline ════════════════════════════════════════════════ -->
-  <div class="pane" id="pane-pipeline">
-    <div class="card">
-      <div id="dz-pipeline" class="drop-zone"
-           onclick="document.getElementById('f-pipeline').click()"
-           ondragover="dzOver(event,this)" ondragleave="dzLeave(this)"
-           ondrop="dzDrop(event,'f-pipeline','dz-pipeline','pi-pipeline','pn-pipeline')">
-        <span class="dz-placeholder">
-          <span class="dz-icon">&#9889;</span>
-          <div class="dz-title">Drop an image here, or click to browse</div>
-          <div class="dz-sub">Structured analysis: elements &middot; categories &middot; Q&amp;A</div>
-        </span>
-        <div class="dz-preview">
-          <img class="prev-img" id="pi-pipeline" src="" alt="preview">
-          <span class="prev-name" id="pn-pipeline"></span>
-          <button class="prev-clear" onclick="dzClear(event,'f-pipeline','dz-pipeline')">&#10005; Remove</button>
-        </div>
-      </div>
-      <input type="file" id="f-pipeline" accept="image/*"
-             onchange="dzSelect(this,'dz-pipeline','pi-pipeline','pn-pipeline')">
-    </div>
-
-    <div class="card">
-      <div class="field">
-        <label>Ask a question about the image <small>(optional)</small></label>
-        <input type="text" id="q-pipeline"
-               placeholder="What is the main purpose of this UI? What colour scheme is used?">
-      </div>
-    </div>
-
-    <div class="btn-row">
-      <button class="btn btn-p" id="btn-pipeline" onclick="runPipeline()">
-        &#9889; Run Pipeline
-      </button>
-    </div>
-
-    <div class="err" id="err-pipeline"></div>
-
-    <div class="result" id="res-pipeline">
-
-      <div class="card">
-        <div class="rh">
-          <span class="rl">Description</span>
-          <button class="btn btn-s btn-xs" onclick="cp('pipe-desc')">&#128203; Copy</button>
-        </div>
-        <div class="rt" id="pipe-desc"></div>
-      </div>
-
-      <div class="card" id="pipe-cat-card">
-        <div class="rh"><span class="rl">Categories</span></div>
-        <div class="tag-row" id="pipe-cats"></div>
-      </div>
-
-      <div class="card" id="pipe-elem-card">
-        <div class="rh">
-          <span class="rl">Detected Elements</span>
-          <span id="pipe-elem-count" style="font-size:13px;color:var(--txt-muted)"></span>
-        </div>
-        <div class="elem-grid" id="pipe-elems"></div>
-      </div>
-
-      <div class="card" id="pipe-text-card">
-        <div class="rh">
-          <span class="rl">Extracted Text</span>
-          <button class="btn btn-s btn-xs" onclick="cp('pipe-text')">&#128203; Copy</button>
-        </div>
-        <div class="rt" id="pipe-text" style="font-size:14px;color:var(--txt-muted)"></div>
-      </div>
-
-      <div id="pipe-qa-wrap" style="display:none">
-        <div class="qa-box">
-          <div class="qa-q" id="pipe-qa-q"></div>
-          <div class="qa-a" id="pipe-qa-a"></div>
+        <div class="card">
+          <div class="rh">
+            <span class="rl">Detections</span>
+            <span id="det-count" class="cnt"></span>
+          </div>
+          <div id="det-list" class="det-list"></div>
         </div>
       </div>
 
-    </div>
-  </div>
+      <!-- HTML result -->
+      <div id="res-html" class="rpane">
+        <div id="html-code-pane">
+          <div class="code-hdr">
+            <span class="rl">Generated HTML</span>
+            <span id="html-valid-badge"></span>
+            <div class="ra">
+              <button class="icon-btn sm" id="preview-html">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Open Preview
+              </button>
+              <button class="icon-btn sm" id="copy-html">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                Copy
+              </button>
+              <button class="icon-btn sm" id="dl-html">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                .html
+              </button>
+            </div>
+          </div>
+          <pre id="html-pre"><code id="html-code"></code></pre>
+        </div>
+      </div>
 
-  <!-- Footer -->
-  <footer class="footer">
-    Built autonomously by <a href="https://heyneo.com" target="_blank">NEO</a>
-    &mdash; your fully autonomous AI coding agent &nbsp;&middot;&nbsp;
-    <a href="https://marketplace.visualstudio.com/items?itemName=NeoResearchInc.heyneo" target="_blank">VS Code Extension</a>
-    <br>Powered by <strong>Gemma 4</strong> via <a href="https://openrouter.ai" target="_blank">OpenRouter</a> or Google AI &middot; DETR object detection
-  </footer>
+      <!-- Pipeline result -->
+      <div id="res-pipeline" class="rpane">
+        <div class="card">
+          <div class="rh">
+            <span class="rl">Description</span>
+            <div class="ra">
+              <button class="icon-btn sm" id="copy-pipe-desc">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                Copy
+              </button>
+              <button class="icon-btn sm" id="dl-pipeline">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                .json
+              </button>
+            </div>
+          </div>
+          <div id="pipe-desc" class="prose"></div>
+        </div>
+        <div class="card hidden" id="pipe-cats-card">
+          <div class="rh"><span class="rl">Categories</span></div>
+          <div id="pipe-cats" class="tag-row"></div>
+        </div>
+        <div class="card hidden" id="pipe-elems-card">
+          <div class="rh">
+            <span class="rl">Detected Elements</span>
+            <span id="pipe-elem-cnt" class="cnt"></span>
+          </div>
+          <div id="pipe-elems" class="elem-grid"></div>
+        </div>
+        <div class="card hidden" id="pipe-text-card">
+          <div class="rh"><span class="rl">Extracted Text</span></div>
+          <div id="pipe-text" class="prose prose-m"></div>
+        </div>
+        <div class="hidden" id="pipe-qa-wrap">
+          <div class="qa-box">
+            <p id="pipe-qa-q" class="qa-q"></p>
+            <p id="pipe-qa-a" class="qa-a"></p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <nav id="bnav" aria-label="Navigation">
+    <button class="bnav-btn on" data-tab="analyze">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <span class="bl">Analyze</span>
+    </button>
+    <button class="bnav-btn" data-tab="detect">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+      <span class="bl">Detect</span>
+    </button>
+    <button class="bnav-btn" data-tab="html">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+      <span class="bl">HTML</span>
+    </button>
+    <button class="bnav-btn" data-tab="pipeline">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg>
+      <span class="bl">Pipeline</span>
+    </button>
+  </nav>
+
 </div>
 
-<div id="toast"></div>
+<aside id="drawer" aria-label="Settings" aria-hidden="true">
+  <div class="dr-hdr">
+    <h2>System Info</h2>
+    <button class="icon-btn" id="close-drawer" aria-label="Close">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="dr-sec">
+    <dl class="info-list">
+      <div class="info-row"><dt>Status</dt><dd id="info-status">–</dd></div>
+      <div class="info-row"><dt>API Mode</dt><dd id="info-mode">–</dd></div>
+      <div class="info-row"><dt>Model</dt><dd id="info-model">–</dd></div>
+      <div class="info-row"><dt>Version</dt><dd id="info-version">–</dd></div>
+    </dl>
+  </div>
+  <div class="dr-sec">
+    <h3>Keyboard Shortcuts</h3>
+    <table class="sk-tbl">
+      <tr><td><kbd>⌘↵</kbd> / <kbd>Ctrl↵</kbd></td><td>Run active tab</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Clear results</td></tr>
+      <tr><td><kbd>⌘K</kbd> / <kbd>CtrlK</kbd></td><td>Toggle this panel</td></tr>
+    </table>
+  </div>
+  <div class="dr-links">
+    <a class="pill-a" href="/health" target="_blank" rel="noreferrer">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Health Check
+    </a>
+  </div>
+</aside>
+<div id="doverlay"></div>
+
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script>
-// Health check
-fetch('/health').then(r=>r.json()).then(d=>{
-  if(d.mock_mode) document.getElementById('mockPill').classList.add('on');
-}).catch(()=>{});
+'use strict';
 
-// Tab switching
-function tab(name){
-  document.querySelectorAll('.pane').forEach(el=>el.classList.remove('on'));
-  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('on'));
-  document.getElementById('pane-'+name).classList.add('on');
-  document.querySelector('[data-t="'+name+'"]').classList.add('on');
+/* ── SVG icon helper ──────────────────────────────────────────────── */
+const IC={
+  search:  '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+  crosshair:'<circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>',
+  monitor: '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
+  zap:     '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+  image:   '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  target:  '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  layout:  '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/>',
+  activity:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+};
+function ic(name,sz=16){
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${IC[name]||''}</svg>`;
 }
 
-// Drop-zone helpers
-function dzOver(e,el){ e.preventDefault(); el.classList.add('drag'); }
-function dzLeave(el){ el.classList.remove('drag'); }
+/* ── State ────────────────────────────────────────────────────────── */
+const S={
+  tab:'analyze',
+  files:{analyze:null,detect:null,html:null,pipeline:null},
+  results:{analyze:null,detect:null,html:null,pipeline:null},
+  busy:false,
+};
 
-function dzDrop(e,fid,dzid,imgid,nameid){
-  e.preventDefault();
-  document.getElementById(dzid).classList.remove('drag');
-  var f=e.dataTransfer.files[0];
-  if(f&&f.type.startsWith('image/')){
-    var inp=document.getElementById(fid);
-    var dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files;
-    showPrev(f,dzid,imgid,nameid);
+/* ── DOM ──────────────────────────────────────────────────────────── */
+const $=id=>document.getElementById(id);
+const D={
+  dropzone:$('dropzone'),fileIn:$('file-input'),
+  prevImg:$('preview-img'),prevName:$('preview-name'),
+  dzIdle:document.querySelector('.dz-idle'),
+  dzPrev:document.querySelector('.dz-preview'),
+  dzIcon:$('dz-icon'),clearBtn:$('clear-btn'),
+  promptFld:$('prompt-field'),promptIn:$('prompt-in'),
+  qFld:$('question-field'),qIn:$('question-in'),
+  runBtn:$('run-btn'),runIcon:$('run-icon'),runLbl:$('run-lbl'),
+  clearResBtn:$('clear-res-btn'),errBanner:$('error-banner'),errMsg:$('error-msg'),
+  outEmpty:$('output-empty'),
+  skA:$('sk-analyze'),skD:$('sk-detect'),skH:$('sk-html'),skP:$('sk-pipeline'),
+  rA:$('res-analyze'),rD:$('res-detect'),rH:$('res-html'),rP:$('res-pipeline'),
+  aTxt:$('analyze-text'),
+  cWrap:$('compare-wrap'),cOrig:$('cmp-orig'),cAnn:$('cmp-ann'),cHandle:$('cmp-handle'),
+  detCnt:$('det-count'),detList:$('det-list'),
+  hPre:$('html-pre'),hCode:$('html-code'),
+  hValid:$('html-valid-badge'),prevHtml:$('preview-html'),
+  pDesc:$('pipe-desc'),pCatsCard:$('pipe-cats-card'),pCats:$('pipe-cats'),
+  pElemsCard:$('pipe-elems-card'),pElems:$('pipe-elems'),pElemCnt:$('pipe-elem-cnt'),
+  pTextCard:$('pipe-text-card'),pText:$('pipe-text'),
+  pQaWrap:$('pipe-qa-wrap'),pQaQ:$('pipe-qa-q'),pQaA:$('pipe-qa-a'),
+  mockBadge:$('mock-badge'),settingsBtn:$('settings-btn'),closeDrawer:$('close-drawer'),
+  drawer:$('drawer'),doverlay:$('doverlay'),toast:$('toast'),
+  tabBtns:document.querySelectorAll('[data-tab]'),
+  topTabBtns:document.querySelectorAll('#tab-nav .tab-btn'),
+  bnavBtns:document.querySelectorAll('#bnav .bnav-btn'),
+  dlA:$('dl-analyze'),dlD:$('dl-detect'),dlH:$('dl-html'),dlP:$('dl-pipeline'),
+  cpA:$('copy-analyze'),cpH:$('copy-html'),cpPD:$('copy-pipe-desc'),
+  infoStatus:$('info-status'),infoMode:$('info-mode'),infoModel:$('info-model'),infoVersion:$('info-version'),
+};
+
+const SKELS={analyze:D.skA,detect:D.skD,html:D.skH,pipeline:D.skP};
+const RPANES={analyze:D.rA,detect:D.rD,html:D.rH,pipeline:D.rP};
+const LABELS={analyze:'Analyze Image',detect:'Detect Objects',html:'Generate HTML',pipeline:'Run Pipeline'};
+const DZ_ICONS={analyze:'image',detect:'crosshair',html:'layout',pipeline:'activity'};
+const RUN_ICONS={analyze:'search',detect:'crosshair',html:'monitor',pipeline:'zap'};
+const BADGE_MAP={button:'b-button',text:'b-text',image:'b-image',chart:'b-chart',table:'b-table',form:'b-form',input:'b-input',navigation:'b-navigation',nav:'b-navigation',menu:'b-navigation',footer:'b-navigation',header:'b-header',card:'b-card',icon:'b-icon'};
+
+/* ── Helpers ──────────────────────────────────────────────────────── */
+function fmtB(b){return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB'}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function badgeCls(t){return BADGE_MAP[String(t).toLowerCase()]||'b-default'}
+
+/* ── Toast ────────────────────────────────────────────────────────── */
+let _tt;
+function toast(msg,err=false){D.toast.textContent=msg;D.toast.className=err?'on err':'on';clearTimeout(_tt);_tt=setTimeout(()=>{D.toast.className=''},2800)}
+
+/* ── Copy ─────────────────────────────────────────────────────────── */
+function copy(text){
+  if(!text){toast('Nothing to copy',true);return}
+  navigator.clipboard.writeText(text).then(()=>toast('Copied!')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Copied!');
+  });
+}
+
+/* ── Downloads ────────────────────────────────────────────────────── */
+function dl(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(u),5000);toast('Downloaded '+name)}
+function dlText(s,n){dl(new Blob([s],{type:'text/plain'}),n)}
+function dlJson(o,n){dl(new Blob([JSON.stringify(o,null,2)],{type:'application/json'}),n)}
+function dlB64(b64,n){const bin=atob(b64),arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);dl(new Blob([arr],{type:'image/png'}),n)}
+
+/* ── Error ────────────────────────────────────────────────────────── */
+function showErr(msg){D.errMsg.textContent=msg;D.errBanner.classList.add('on')}
+function hideErr(){D.errBanner.classList.remove('on')}
+
+/* ── Loading ──────────────────────────────────────────────────────── */
+function setLoading(tab,busy){
+  S.busy=busy;D.runBtn.disabled=busy;
+  Object.values(SKELS).forEach(s=>s.classList.remove('on'));
+  if(busy){
+    D.outEmpty.classList.add('hidden');
+    Object.values(RPANES).forEach(p=>p.classList.remove('on'));
+    D.clearResBtn.classList.add('hidden');
+    SKELS[tab].classList.add('on');
+    D.runIcon.innerHTML='<span class="spin"></span>';
+    D.runLbl.textContent='Processing…';
+  }else{
+    D.runIcon.innerHTML=ic(RUN_ICONS[tab],15);
+    D.runLbl.textContent=LABELS[tab];
   }
 }
 
-function dzSelect(inp,dzid,imgid,nameid){
-  if(inp.files[0]) showPrev(inp.files[0],dzid,imgid,nameid);
+/* ── Results ──────────────────────────────────────────────────────── */
+function hideAll(){Object.values(RPANES).forEach(p=>p.classList.remove('on'));D.clearResBtn.classList.add('hidden')}
+function showResult(tab){Object.values(SKELS).forEach(s=>s.classList.remove('on'));RPANES[tab].classList.add('on');D.clearResBtn.classList.remove('hidden');D.outEmpty.classList.add('hidden')}
+function clearResults(){hideAll();hideErr();D.outEmpty.classList.remove('hidden');D.clearResBtn.classList.add('hidden')}
+
+/* ── Tab Switching ────────────────────────────────────────────────── */
+function switchTab(name){
+  S.tab=name;
+  // Reset file input so same file can be re-selected on any tab
+  D.fileIn.value='';
+  D.topTabBtns.forEach(b=>{const a=b.dataset.tab===name;b.classList.toggle('on',a);b.setAttribute('aria-selected',a)});
+  D.bnavBtns.forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
+  D.promptFld.classList.toggle('hidden',name!=='analyze');
+  D.qFld.classList.toggle('hidden',name!=='pipeline');
+  D.runIcon.innerHTML=ic(RUN_ICONS[name],15);
+  D.runLbl.textContent=LABELS[name];
+  D.dzIcon.innerHTML=ic(DZ_ICONS[name],36);
+  updateDZ();
+  Object.values(SKELS).forEach(s=>s.classList.remove('on'));
+  hideAll();hideErr();
+  if(S.results[name])RENDERS[name](S.results[name]);
+  else{D.outEmpty.classList.remove('hidden');D.clearResBtn.classList.add('hidden')}
 }
 
-function showPrev(file,dzid,imgid,nameid){
-  var r=new FileReader();
-  r.onload=function(e){
-    document.getElementById(imgid).src=e.target.result;
-    document.getElementById(nameid).textContent=file.name+' ('+fmtB(file.size)+')';
-    document.getElementById(dzid).classList.add('has-img');
-  };
-  r.readAsDataURL(file);
+/* ── Drop Zone ────────────────────────────────────────────────────── */
+function updateDZ(){
+  const f=S.files[S.tab];
+  if(f){
+    const r=new FileReader();
+    r.onload=e=>{D.prevImg.src=e.target.result};
+    r.readAsDataURL(f);
+    D.prevName.textContent=f.name+' ('+fmtB(f.size)+')';
+    D.dropzone.classList.add('has-img');
+  }else{
+    D.dropzone.classList.remove('has-img');
+    D.prevImg.src='';D.prevName.textContent='';
+  }
 }
 
-function dzClear(e,fid,dzid){
-  e.stopPropagation();
-  document.getElementById(fid).value='';
-  document.getElementById(dzid).classList.remove('has-img');
+function setFile(f){
+  if(f.size>10*1024*1024){toast('File too large (max 10 MB)',true);return}
+  S.files[S.tab]=f;
+  updateDZ();
+  // Reset so the same file can be selected again later
+  D.fileIn.value='';
 }
 
-function fmtB(b){
-  if(b<1024) return b+' B';
-  if(b<1048576) return (b/1024).toFixed(1)+' KB';
-  return (b/1048576).toFixed(1)+' MB';
+function setupDZ(){
+  D.dropzone.addEventListener('click',e=>{
+    if(e.target===D.clearBtn||D.clearBtn.contains(e.target))return;
+    D.fileIn.click();
+  });
+  D.dropzone.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();D.fileIn.click()}
+  });
+  D.dropzone.addEventListener('dragover',e=>{e.preventDefault();D.dropzone.classList.add('drag')});
+  D.dropzone.addEventListener('dragleave',e=>{if(!D.dropzone.contains(e.relatedTarget))D.dropzone.classList.remove('drag')});
+  D.dropzone.addEventListener('drop',e=>{
+    e.preventDefault();D.dropzone.classList.remove('drag');
+    const f=e.dataTransfer.files[0];
+    if(f&&f.type.startsWith('image/'))setFile(f);
+    else toast('Drop an image file',true);
+  });
+  D.fileIn.addEventListener('change',()=>{
+    if(D.fileIn.files[0])setFile(D.fileIn.files[0]);
+  });
+  D.clearBtn.addEventListener('click',e=>{
+    e.stopPropagation();
+    S.files[S.tab]=null;D.fileIn.value='';updateDZ();
+  });
 }
 
-// Toast
-function toast(msg){
-  var t=document.getElementById('toast');
-  t.textContent=msg; t.classList.add('on');
-  setTimeout(function(){ t.classList.remove('on'); },2600);
+/* ── Render functions ─────────────────────────────────────────────── */
+function renderAnalyze(d){D.aTxt.textContent=d.text||'';showResult('analyze')}
+
+function renderDetect(d){
+  const b64=d.image_base64||'';
+  D.cAnn.src='data:image/png;base64,'+b64;
+  const f=S.files['detect'];
+  if(f){
+    const r=new FileReader();
+    r.onload=e=>{
+      D.cOrig.src=e.target.result;
+      D.cOrig.onload=()=>{
+        const w=D.cWrap.offsetWidth,ratio=D.cOrig.naturalHeight/(D.cOrig.naturalWidth||1);
+        D.cWrap.style.height=Math.min(Math.round(w*ratio),360)+'px';
+      };
+    };
+    r.readAsDataURL(f);
+  }else{D.cOrig.src=D.cAnn.src;D.cWrap.style.height='240px'}
+  setSlider(50);
+  const dets=d.detections||[];
+  D.detCnt.textContent=dets.length+' object'+(dets.length!==1?'s':'');
+  D.detList.innerHTML=dets.map(x=>{
+    const pct=Math.round((x.confidence||0)*100);
+    return '<div class="det-row"><span class="det-lbl">'+esc(x.label||'object')+'</span><div class="conf-wrap"><div class="conf-bg"><div class="conf-fg" style="width:'+pct+'%"></div></div><span class="conf-pct">'+pct+'%</span></div></div>';
+  }).join('');
+  showResult('detect');
 }
 
-function cp(id){
-  navigator.clipboard.writeText(document.getElementById(id).textContent)
-    .then(function(){ toast('Copied to clipboard!'); });
+function renderHtml(d){
+  const code=d.html_code||'';
+  D.hValid.innerHTML=d.is_valid?'<span class="valid-lbl">✓ Valid</span>':'<span class="invalid-lbl">⚠ Check</span>';
+  if(window.hljs){
+    D.hCode.innerHTML=hljs.highlight(code,{language:'html'}).value;
+  }else{
+    D.hCode.textContent=code;
+  }
+  showResult('html');
 }
 
-// Button loading state
-function setBusy(id,busy){
-  var b=document.getElementById(id);
-  if(busy){ b._h=b.innerHTML; b.innerHTML='<span class="spin"></span> Processing\u2026'; b.disabled=true; }
-  else { b.innerHTML=b._h; b.disabled=false; }
+function renderPipeline(d){
+  D.pDesc.textContent=d.description||'';
+  const cats=d.categories||[];
+  if(cats.length){D.pCats.innerHTML=cats.map(c=>'<span class="tag">'+esc(c)+'</span>').join('');D.pCatsCard.classList.remove('hidden')}
+  else D.pCatsCard.classList.add('hidden');
+  const elems=d.detected_elements||[];
+  if(elems.length){
+    D.pElemCnt.textContent=elems.length+' element'+(elems.length!==1?'s':'');
+    D.pElems.innerHTML=elems.map(el=>{
+      const t=(el.element_type||'other').toLowerCase(),pct=Math.round((el.confidence||.8)*100);
+      return '<div class="elem-card"><span class="elem-badge '+badgeCls(t)+'">'+esc(t)+'</span><div class="elem-desc">'+esc(el.description||'')+'</div>'+(el.text_content?'<div class="elem-txt">\u201c'+esc(el.text_content)+'\u201d</div>':'')+'<div class="elem-conf">'+pct+'% confidence</div></div>';
+    }).join('');
+    D.pElemsCard.classList.remove('hidden');
+  }else D.pElemsCard.classList.add('hidden');
+  const txt=d.text_content||'';
+  if(txt){D.pText.textContent=txt;D.pTextCard.classList.remove('hidden')}else D.pTextCard.classList.add('hidden');
+  if(d.answer&&d.question){D.pQaQ.textContent='Q: '+d.question;D.pQaA.textContent=d.answer;D.pQaWrap.classList.remove('hidden')}
+  else D.pQaWrap.classList.add('hidden');
+  showResult('pipeline');
 }
 
-function showErr(id,msg){ var el=document.getElementById(id); el.textContent='\u26A0 '+msg; el.classList.add('on'); }
-function clearErr(id){ document.getElementById(id).classList.remove('on'); }
+const RENDERS={analyze:renderAnalyze,detect:renderDetect,html:renderHtml,pipeline:renderPipeline};
 
-function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-var BADGE={
-  button:'b-button',text:'b-text',image:'b-image',chart:'b-chart',
-  table:'b-table',form:'b-form',input:'b-input',navigation:'b-navigation',
-  nav:'b-navigation',header:'b-header',footer:'b-footer',card:'b-card',
-  menu:'b-navigation',icon:'b-icon',other:'b-other'
-};
-function badge(t){ return BADGE[t]||'b-default'; }
-
-// ── Analyze ───────────────────────────────────────────────────────────────
+/* ── API runners ──────────────────────────────────────────────────── */
 async function runAnalyze(){
-  var f=document.getElementById('f-analyze').files[0];
-  if(!f){ toast('Please upload an image first'); return; }
-  clearErr('err-analyze'); setBusy('btn-analyze',true);
-  var fd=new FormData(); fd.append('file',f);
-  var p=document.getElementById('prompt-analyze').value.trim();
-  if(p) fd.append('prompt',p);
+  const f=S.files['analyze'];if(!f){toast('Upload an image first',true);return}
+  hideErr();setLoading('analyze',true);
   try{
-    var r=await fetch('/analyze',{method:'POST',body:fd});
-    var d=await r.json();
-    if(!r.ok) throw new Error(d.detail||'Request failed');
-    if(!d.success) throw new Error(d.error||'Analysis failed');
-    document.getElementById('txt-analyze').textContent=d.text;
-    document.getElementById('res-analyze').classList.add('on');
-  }catch(e){ showErr('err-analyze',e.message); }
-  finally{ setBusy('btn-analyze',false); }
+    const fd=new FormData();fd.append('file',f);
+    const p=D.promptIn.value.trim();if(p)fd.append('prompt',p);
+    const res=await fetch('/analyze',{method:'POST',body:fd}),d=await res.json();
+    if(!res.ok)throw new Error(d.detail||'Request failed');
+    if(!d.success)throw new Error(d.error||'Analysis failed');
+    S.results['analyze']=d;renderAnalyze(d);
+  }catch(e){showErr(e.message)}finally{setLoading('analyze',false)}
 }
 
-// ── Detect ────────────────────────────────────────────────────────────────
 async function runDetect(){
-  var f=document.getElementById('f-detect').files[0];
-  if(!f){ toast('Please upload an image first'); return; }
-  clearErr('err-detect'); setBusy('btn-detect',true);
-  var fd=new FormData(); fd.append('file',f);
+  const f=S.files['detect'];if(!f){toast('Upload an image first',true);return}
+  hideErr();setLoading('detect',true);
   try{
-    var r=await fetch('/segment',{method:'POST',body:fd});
-    var d=await r.json();
-    if(!r.ok) throw new Error(d.detail||'Request failed');
-    if(!d.success) throw new Error(d.error||'Detection failed');
-    document.getElementById('det-img').src='data:image/png;base64,'+d.image_base64;
-    var dets=d.detections||[];
-    document.getElementById('det-count').textContent=dets.length+' object'+(dets.length!==1?'s':'');
-    var list=document.getElementById('det-list');
-    list.innerHTML=dets.map(function(x){
-      var pct=Math.round((x.confidence||0)*100);
-      return '<div class="det-row"><span class="det-lbl">'+escH(x.label||'object')+'</span>'
-        +'<div class="conf-wrap"><div class="conf-bg"><div class="conf-fg" style="width:'+pct+'%"></div></div>'
-        +'<span class="conf-pct">'+pct+'%</span></div></div>';
-    }).join('');
-    document.getElementById('res-detect').classList.add('on');
-  }catch(e){ showErr('err-detect',e.message); }
-  finally{ setBusy('btn-detect',false); }
+    const fd=new FormData();fd.append('file',f);
+    const res=await fetch('/segment',{method:'POST',body:fd}),d=await res.json();
+    if(!res.ok)throw new Error(d.detail||'Request failed');
+    if(!d.success)throw new Error(d.error||'Detection failed');
+    S.results['detect']=d;renderDetect(d);
+  }catch(e){showErr(e.message)}finally{setLoading('detect',false)}
 }
 
-// ── HTML ──────────────────────────────────────────────────────────────────
 async function runHtml(){
-  var f=document.getElementById('f-html').files[0];
-  if(!f){ toast('Please upload a screenshot first'); return; }
-  clearErr('err-html'); setBusy('btn-html',true);
-  var fd=new FormData(); fd.append('file',f);
+  const f=S.files['html'];if(!f){toast('Upload a screenshot first',true);return}
+  hideErr();setLoading('html',true);
   try{
-    var r=await fetch('/screenshot-to-html',{method:'POST',body:fd});
-    var d=await r.json();
-    if(!r.ok) throw new Error(d.detail||'Request failed');
-    if(!d.success) throw new Error(d.error||'Conversion failed');
-    var code=d.html_code||'';
-    document.getElementById('html-code').textContent=code;
-    document.getElementById('html-frame').srcdoc=code;
-    document.getElementById('html-valid').innerHTML=d.is_valid
-      ?'<span style="color:#6ee7b7">\u2713 Valid HTML</span>'
-      :'<span style="color:#fca5a5">\u26A0 Invalid HTML</span>';
-    document.getElementById('res-html').classList.add('on');
-  }catch(e){ showErr('err-html',e.message); }
-  finally{ setBusy('btn-html',false); }
+    const fd=new FormData();fd.append('file',f);
+    const res=await fetch('/screenshot-to-html',{method:'POST',body:fd}),d=await res.json();
+    if(!res.ok)throw new Error(d.detail||'Request failed');
+    if(!d.success)throw new Error(d.error||'Conversion failed');
+    S.results['html']=d;renderHtml(d);
+  }catch(e){showErr(e.message)}finally{setLoading('html',false)}
 }
 
-// ── Pipeline ──────────────────────────────────────────────────────────────
 async function runPipeline(){
-  var f=document.getElementById('f-pipeline').files[0];
-  if(!f){ toast('Please upload an image first'); return; }
-  clearErr('err-pipeline'); setBusy('btn-pipeline',true);
-  var fd=new FormData(); fd.append('file',f);
-  var q=document.getElementById('q-pipeline').value.trim();
-  if(q) fd.append('question',q);
+  const f=S.files['pipeline'];if(!f){toast('Upload an image first',true);return}
+  hideErr();setLoading('pipeline',true);
   try{
-    var r=await fetch('/pipeline',{method:'POST',body:fd});
-    var d=await r.json();
-    if(!r.ok) throw new Error(d.detail||'Request failed');
-    if(!d.success) throw new Error(d.error||'Pipeline failed');
-
-    document.getElementById('pipe-desc').textContent=d.description||'';
-
-    var cats=d.categories||[];
-    document.getElementById('pipe-cats').innerHTML=cats.map(function(c){ return '<span class="tag">'+escH(c)+'</span>'; }).join('');
-    document.getElementById('pipe-cat-card').style.display=cats.length?'':'none';
-
-    var elems=d.detected_elements||[];
-    document.getElementById('pipe-elem-count').textContent=elems.length+' element'+(elems.length!==1?'s':'');
-    document.getElementById('pipe-elems').innerHTML=elems.map(function(el){
-      var t=(el.element_type||'other').toLowerCase();
-      var pct=Math.round((el.confidence||0.8)*100);
-      return '<div class="elem-card">'
-        +'<span class="elem-badge '+badge(t)+'">'+escH(t)+'</span>'
-        +'<div class="elem-desc">'+escH(el.description||'')+'</div>'
-        +(el.text_content?'<div class="elem-text">\u201c'+escH(el.text_content)+'\u201d</div>':'')
-        +'<div class="elem-conf">'+pct+'% confidence</div>'
-        +'</div>';
-    }).join('');
-    document.getElementById('pipe-elem-card').style.display=elems.length?'':'none';
-
-    var txt=d.text_content||'';
-    document.getElementById('pipe-text').textContent=txt||'No text extracted.';
-    document.getElementById('pipe-text-card').style.display=txt?'':'none';
-
-    var qaWrap=document.getElementById('pipe-qa-wrap');
-    if(d.answer&&d.question){
-      document.getElementById('pipe-qa-q').textContent='\u2753 '+d.question;
-      document.getElementById('pipe-qa-a').textContent=d.answer;
-      qaWrap.style.display='';
-    } else { qaWrap.style.display='none'; }
-
-    document.getElementById('res-pipeline').classList.add('on');
-  }catch(e){ showErr('err-pipeline',e.message); }
-  finally{ setBusy('btn-pipeline',false); }
+    const fd=new FormData();fd.append('file',f);
+    const q=D.qIn.value.trim();if(q)fd.append('question',q);
+    const res=await fetch('/pipeline',{method:'POST',body:fd}),d=await res.json();
+    if(!res.ok)throw new Error(d.detail||'Request failed');
+    if(!d.success)throw new Error(d.error||'Pipeline failed');
+    S.results['pipeline']=d;renderPipeline(d);
+  }catch(e){showErr(e.message)}finally{setLoading('pipeline',false)}
 }
+
+const RUNNERS={analyze:runAnalyze,detect:runDetect,html:runHtml,pipeline:runPipeline};
+
+/* ── Compare slider ───────────────────────────────────────────────── */
+function setSlider(pct){
+  pct=Math.min(100,Math.max(0,pct));
+  D.cHandle.style.left=pct+'%';
+  D.cAnn.style.clipPath='inset(0 '+(100-pct)+'% 0 0)';
+  D.cHandle.setAttribute('aria-valuenow',Math.round(pct));
+}
+function initSlider(){
+  let drag=false;
+  const pct=cx=>{const r=D.cWrap.getBoundingClientRect();return((cx-r.left)/r.width)*100};
+  D.cWrap.addEventListener('mousedown',e=>{drag=true;setSlider(pct(e.clientX));e.preventDefault()});
+  document.addEventListener('mouseup',()=>{drag=false});
+  document.addEventListener('mousemove',e=>{if(drag)setSlider(pct(e.clientX))});
+  D.cWrap.addEventListener('touchstart',e=>{drag=true;setSlider(pct(e.touches[0].clientX));e.preventDefault()},{passive:false});
+  document.addEventListener('touchend',()=>{drag=false});
+  document.addEventListener('touchmove',e=>{if(drag)setSlider(pct(e.touches[0].clientX))},{passive:true});
+  D.cHandle.addEventListener('keydown',e=>{
+    const v=parseFloat(D.cHandle.getAttribute('aria-valuenow')||'50');
+    if(e.key==='ArrowLeft'){setSlider(v-2);e.preventDefault()}
+    if(e.key==='ArrowRight'){setSlider(v+2);e.preventDefault()}
+  });
+}
+
+
+/* ── Drawer ───────────────────────────────────────────────────────── */
+function openDrawer(){D.drawer.classList.add('on');D.drawer.setAttribute('aria-hidden','false');D.doverlay.classList.add('on');setTimeout(()=>D.closeDrawer.focus(),50)}
+function closeDrawer(){D.drawer.classList.remove('on');D.drawer.setAttribute('aria-hidden','true');D.doverlay.classList.remove('on')}
+
+/* ── Health ───────────────────────────────────────────────────────── */
+async function initHealth(){
+  try{
+    const r=await fetch('/health'),d=await r.json();
+    if(d.mock_mode)D.mockBadge.classList.add('on');
+    D.infoStatus.textContent=d.status||'ok';
+    D.infoMode.textContent=d.mock_mode?'Mock (no API key)':'Live';
+    D.infoModel.textContent=d.mock_mode?'Mock responses':'Gemma 4';
+    D.infoVersion.textContent=d.version||'1.0.0';
+  }catch{D.infoStatus.textContent='Unreachable'}
+}
+
+/* ── Keyboard ─────────────────────────────────────────────────────── */
+function setupKeys(){
+  document.addEventListener('keydown',e=>{
+    const mod=e.metaKey||e.ctrlKey;
+    if(mod&&e.key==='Enter'){e.preventDefault();if(!S.busy)RUNNERS[S.tab]();return}
+    if(mod&&e.key==='k'){e.preventDefault();D.drawer.classList.contains('on')?closeDrawer():openDrawer();return}
+    if(e.key==='Escape'){if(D.drawer.classList.contains('on')){closeDrawer();e.preventDefault()}else clearResults()}
+  });
+}
+
+/* ── Init ─────────────────────────────────────────────────────────── */
+function init(){
+  setupDZ();initSlider();setupKeys();
+  D.settingsBtn.addEventListener('click',openDrawer);
+  D.closeDrawer.addEventListener('click',closeDrawer);
+  D.doverlay.addEventListener('click',closeDrawer);
+  D.tabBtns.forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
+  D.runBtn.addEventListener('click',()=>{if(!S.busy)RUNNERS[S.tab]()});
+  D.clearResBtn.addEventListener('click',clearResults);
+  D.cpA.addEventListener('click',()=>copy(D.aTxt.textContent));
+  D.cpH.addEventListener('click',()=>copy((S.results['html']&&S.results['html'].html_code)||''));
+  D.cpPD.addEventListener('click',()=>copy(D.pDesc.textContent));
+  D.prevHtml.addEventListener('click',()=>{
+    const d=S.results['html'];
+    if(!d||!d.html_code){toast('No HTML yet',true);return}
+    const w=window.open('','_blank');
+    w.document.open();w.document.write(d.html_code);w.document.close();
+  });
+  D.dlA.addEventListener('click',()=>{const d=S.results['analyze'];d?dlText(d.text||'','analysis.txt'):toast('No result yet',true)});
+  D.dlD.addEventListener('click',()=>{const d=S.results['detect'];d&&d.image_base64?dlB64(d.image_base64,'detected.png'):toast('No result yet',true)});
+  D.dlH.addEventListener('click',()=>{const d=S.results['html'];d?dlText(d.html_code||'','generated.html'):toast('No result yet',true)});
+  D.dlP.addEventListener('click',()=>{const d=S.results['pipeline'];d?dlJson(d,'pipeline.json'):toast('No result yet',true)});
+  initHealth();
+  switchTab('analyze');
+}
+
+document.addEventListener('DOMContentLoaded',init);
 </script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </body>
 </html>
