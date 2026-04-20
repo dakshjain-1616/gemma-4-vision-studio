@@ -9,6 +9,16 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# ── Inference Backend Configuration ──────────────────────────────────────────
+# Set INFERENCE_BACKEND to explicitly choose a provider:
+#   'ollama'     → Local Ollama server (http://localhost:11434)
+#   'llamacpp'   → Local llama.cpp server (http://localhost:8080)
+#   'openrouter' → OpenRouter API (cloud)
+#   'google'     → Google AI Studio API (cloud)
+#   'mock'       → Demo mode (no AI, fake responses)
+# If not set, provider is auto-selected from API keys (OpenRouter → Google → mock)
+INFERENCE_BACKEND = os.getenv("INFERENCE_BACKEND", "").lower()
+
 # ── API Provider Configuration ───────────────────────────────────────────────
 # Set OPENROUTER_API_KEY to use OpenRouter (recommended — supports Gemma 3/4 with vision)
 # Set GEMINI_API_KEY to use Google AI Studio directly
@@ -17,13 +27,15 @@ load_dotenv()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")  # Google AI Studio key
 
-# Auto-select provider — OpenRouter takes priority if both keys are present
-if OPENROUTER_API_KEY:
+# Auto-select provider — INFERENCE_BACKEND takes priority, then OpenRouter, then Google, then mock
+if INFERENCE_BACKEND in ("ollama", "llamacpp", "openrouter", "google", "mock"):
+    API_PROVIDER = INFERENCE_BACKEND
+elif OPENROUTER_API_KEY:
     API_PROVIDER = "openrouter"
 elif GEMINI_API_KEY:
     API_PROVIDER = "google"
 else:
-    API_PROVIDER = None  # triggers mock mode
+    API_PROVIDER = "mock"  # triggers mock mode
 
 # ── OpenRouter Settings ──────────────────────────────────────────────────────
 # OpenRouter provides Gemma models (and 100+ others) via an OpenAI-compatible API.
@@ -37,6 +49,20 @@ OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-4-31b-it")
 GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemma-4-31b-it")
 
+# ── Ollama Settings ───────────────────────────────────────────────────────────
+# Local inference via Ollama (https://ollama.com)
+# Run: ollama pull gemma4  (tags: gemma4:e2b, gemma4:e4b, gemma4:27b)
+# Then: ollama serve
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4")
+
+# ── llama.cpp Settings ────────────────────────────────────────────────────────
+# Local inference via llama.cpp server (https://github.com/ggerganov/llama.cpp)
+# Download GGUF from: https://huggingface.co/unsloth/gemma-4-27B-it-GGUF
+# Run: ./llama-server -m gemma-4-27b-it-Q4_K_M.gguf --port 8080
+LLAMACPP_BASE_URL = os.getenv("LLAMACPP_BASE_URL", "http://localhost:8080")
+LLAMACPP_MODEL = os.getenv("LLAMACPP_MODEL", "gemma-4-27b-it-Q4_K_M.gguf")
+
 # Legacy aliases (used in tests + other modules)
 DEFAULT_MODEL = GEMINI_MODEL
 VISION_MODEL = GEMINI_MODEL
@@ -48,7 +74,7 @@ MIN_IMAGE_DIMENSION = 32
 ALLOWED_FORMATS = ["jpg", "jpeg", "png", "gif", "webp"]
 
 # ── API Settings ─────────────────────────────────────────────────────────────
-API_TIMEOUT = 30        # seconds
+API_TIMEOUT = 120       # seconds (CPU inference needs more time)
 MAX_RETRIES = 3
 RETRY_DELAY = 1         # seconds between retries
 
@@ -66,8 +92,8 @@ APP_PORT = 8000
 CORS_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
 
 # ── Mock Mode ────────────────────────────────────────────────────────────────
-# Automatically enabled when no API key is set
-MOCK_MODE = API_PROVIDER is None
+# Automatically enabled when no API key is set and no local backend configured
+MOCK_MODE = API_PROVIDER == "mock"
 
 
 def get_api_key() -> str:

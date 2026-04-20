@@ -21,6 +21,10 @@ from config import (
     GEMINI_API_KEY,
     GEMINI_MODEL,
     GEMINI_BASE_URL,
+    OLLAMA_BASE_URL,
+    OLLAMA_MODEL,
+    LLAMACPP_BASE_URL,
+    LLAMACPP_MODEL,
     DEFAULT_MODEL,
     API_TIMEOUT,
     MAX_RETRIES,
@@ -46,12 +50,20 @@ class GemmaClient:
             self.api_key = GEMINI_API_KEY if api_key is None else api_key
             self.model = model or GEMINI_MODEL
             self.base_url = GEMINI_BASE_URL
+        elif self.provider == "ollama":
+            self.api_key = ""  # Ollama doesn't require API keys
+            self.model = model or OLLAMA_MODEL
+            self.base_url = OLLAMA_BASE_URL
+        elif self.provider == "llamacpp":
+            self.api_key = ""  # llama.cpp doesn't require API keys
+            self.model = model or LLAMACPP_MODEL
+            self.base_url = LLAMACPP_BASE_URL
         else:
             self.api_key = "" if api_key is None else api_key
             self.model = ""
             self.base_url = ""
 
-        self.mock_mode = MOCK_MODE or not self.api_key
+        self.mock_mode = MOCK_MODE or (not self.api_key and self.provider not in ("ollama", "llamacpp"))
 
     # ── Image helpers ─────────────────────────────────────────────────────────
 
@@ -76,7 +88,13 @@ class GemmaClient:
             return self._mock_text(prompt)
         if self.provider == "openrouter":
             return self._call_openrouter(prompt, image_path)
-        return self._call_google(prompt, image_path)
+        elif self.provider == "google":
+            return self._call_google(prompt, image_path)
+        elif self.provider == "ollama":
+            return self._call_ollama(prompt, image_path)
+        elif self.provider == "llamacpp":
+            return self._call_llamacpp(prompt, image_path)
+        return self._mock_text(prompt)
 
     def _call_openrouter(self, prompt: str, image_path: Optional[str] = None) -> Optional[str]:
         """OpenAI-compatible chat completions via OpenRouter."""
@@ -146,6 +164,81 @@ class GemmaClient:
             except Exception as e:
                 if attempt == MAX_RETRIES - 1:
                     print(f"Google AI API failed: {e}")
+                    return None
+                time.sleep(RETRY_DELAY)
+        return None
+
+    def _call_ollama(self, prompt: str, image_path: Optional[str] = None) -> Optional[str]:
+        """Ollama native API request to /api/generate."""
+        import urllib.request
+
+        # Build the prompt with image if provided
+        # Ollama uses a specific format for images in the prompt
+        full_prompt = prompt
+        images = []
+        if image_path:
+            mime = self._get_mime_type(image_path)
+            b64 = self._encode_image(image_path)
+            images.append(b64)
+
+        payload = {
+            "model": self.model,
+            "prompt": full_prompt,
+            "images": images,
+            "stream": False,
+            "options": {"temperature": 0.7},
+        }
+        headers = {"Content-Type": "application/json"}
+        url = f"{self.base_url}/api/generate"
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                req = urllib.request.Request(
+                    url, data=json.dumps(payload).encode(), headers=headers, method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=API_TIMEOUT) as resp:
+                    data = json.loads(resp.read().decode())
+                    return data.get("response", "")
+            except Exception as e:
+                if attempt == MAX_RETRIES - 1:
+                    print(f"Ollama API failed: {e}")
+                    return None
+                time.sleep(RETRY_DELAY)
+        return None
+
+    def _call_llamacpp(self, prompt: str, image_path: Optional[str] = None) -> Optional[str]:
+        """llama.cpp server OpenAI-compatible API request to /v1/chat/completions."""
+        import urllib.request
+
+        content: List = [{"type": "text", "text": prompt}]
+        if image_path:
+            mime = self._get_mime_type(image_path)
+            b64 = self._encode_image(image_path)
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:{mime};base64,{b64}"},
+            })
+
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": content}],
+            "temperature": 0.7,
+            "max_tokens": 1024,
+        }
+        headers = {"Content-Type": "application/json"}
+        url = f"{self.base_url}/v1/chat/completions"
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                req = urllib.request.Request(
+                    url, data=json.dumps(payload).encode(), headers=headers, method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=API_TIMEOUT) as resp:
+                    data = json.loads(resp.read().decode())
+                    return data["choices"][0]["message"]["content"]
+            except Exception as e:
+                if attempt == MAX_RETRIES - 1:
+                    print(f"llama.cpp API failed: {e}")
                     return None
                 time.sleep(RETRY_DELAY)
         return None

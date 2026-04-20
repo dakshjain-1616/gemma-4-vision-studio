@@ -72,20 +72,45 @@ GEMINI_API_KEY=AIza...
 
 If neither key is set, the app starts in **mock mode** — all endpoints return realistic demo responses so you can build and test the UI without any API account.
 
-#### Option D — Local inference via Ollama
+#### Option D — Local inference via Ollama (no API key needed)
 
-Install [Ollama](https://ollama.com) and pull Gemma 4:
+Install [Ollama](https://ollama.com), pull Gemma 4, and start the server:
 
 ```bash
-ollama run gemma4
+ollama pull gemma4   # downloads ~9.6 GB (e4b variant)
+ollama serve
 ```
 
-Then point the app at your local Ollama endpoint:
+Set in your `.env`:
 
 ```env
-OPENROUTER_API_KEY=ollama
-OPENROUTER_BASE_URL=http://localhost:11434/v1
-OPENROUTER_MODEL=gemma4
+INFERENCE_BACKEND=ollama
+OLLAMA_BASE_URL=http://localhost:11434   # default, can omit
+OLLAMA_MODEL=gemma4                      # or gemma4:e2b, gemma4:27b
+```
+
+Then start the app:
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000
+```
+
+> **Tested and confirmed working.** Gemma 4 via Ollama correctly performs vision analysis end-to-end through the `/analyze` endpoint. GPU recommended — CPU inference works but takes ~60-90s per image.
+
+#### Option E — Local inference via llama.cpp (no API key needed)
+
+Build [llama.cpp](https://github.com/ggerganov/llama.cpp) and download a Gemma 4 GGUF from [Unsloth on HuggingFace](https://huggingface.co/unsloth/gemma-4-27B-it-GGUF):
+
+```bash
+./llama-server -m gemma-4-27b-it-Q4_K_M.gguf --port 8080 --host 0.0.0.0
+```
+
+Set in your `.env`:
+
+```env
+INFERENCE_BACKEND=llamacpp
+LLAMACPP_BASE_URL=http://localhost:8080   # default, can omit
+LLAMACPP_MODEL=gemma-4-27b-it-Q4_K_M.gguf
 ```
 
 ### 3. Start the server
@@ -105,7 +130,7 @@ Browser (index.html)
     │  drag-drop upload, 4-tab UI
     │
     ▼
-FastAPI (app.py) ─── /analyze            ──► GemmaClient → OpenRouter or Google AI
+FastAPI (app.py) ─── /analyze            ──► GemmaClient → Ollama | llama.cpp | OpenRouter | Google AI
                  ─── /segment            ──► ImageSegmenter (DETR, local)
                  ─── /screenshot-to-html ──► ScreenshotToHTML → GemmaClient
                  ─── /pipeline           ──► PipelineProcessor → GemmaClient
@@ -119,14 +144,19 @@ FastAPI (app.py) ─── /analyze            ──► GemmaClient → OpenRou
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENROUTER_API_KEY` | *(empty)* | OpenRouter key — **recommended provider** |
+| `INFERENCE_BACKEND` | *(auto)* | Explicit backend: `ollama`, `llamacpp`, `openrouter`, `google`, `mock` |
+| `OPENROUTER_API_KEY` | *(empty)* | OpenRouter key — **recommended cloud provider** |
 | `OPENROUTER_MODEL` | `google/gemma-4-31b-it` | Model to use via OpenRouter |
-| `GEMINI_API_KEY` | *(empty)* | Google AI Studio key — alternative provider |
+| `GEMINI_API_KEY` | *(empty)* | Google AI Studio key — alternative cloud provider |
 | `GEMINI_MODEL` | `gemma-4-31b-it` | Model to use via Google AI |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `gemma4` | Ollama model name |
+| `LLAMACPP_BASE_URL` | `http://localhost:8080` | llama.cpp server URL |
+| `LLAMACPP_MODEL` | `gemma-4-27b-it-Q4_K_M.gguf` | llama.cpp model name |
 | `MAX_IMAGE_SIZE_MB` | `10` | Maximum upload size |
-| `MOCK_MODE` | auto | `True` when no API key is set |
+| `MOCK_MODE` | auto | `True` when no backend is configured |
 
-If both `OPENROUTER_API_KEY` and `GEMINI_API_KEY` are set, OpenRouter is used.
+`INFERENCE_BACKEND` takes priority over API keys. If unset, provider is auto-selected: OpenRouter → Google AI → mock.
 
 ---
 
@@ -148,7 +178,7 @@ If both `OPENROUTER_API_KEY` and `GEMINI_API_KEY` are set, OpenRouter is used.
 ```
 gemma4-vision-studio/
 ├── app.py                # FastAPI app + all endpoints
-├── gemma_client.py       # OpenRouter / Google AI client with mock fallback
+├── gemma_client.py       # Unified client: Ollama, llama.cpp, OpenRouter, Google AI, mock
 ├── segmenter.py          # DETR object detection (local, no API needed)
 ├── screenshot_to_html.py # Screenshot → HTML converter
 ├── pipeline_processor.py # Structured analysis pipeline
